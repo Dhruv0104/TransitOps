@@ -6,7 +6,7 @@ Smart Transport Operations Platform — digitize vehicle, driver, dispatch, main
 
 - **Frontend:** React (Vite) + Tailwind CSS
 - **Backend:** Node.js + Express
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL (Neon or local)
 - **ORM:** Prisma
 
 ## Project Structure
@@ -22,28 +22,24 @@ TransitOps/
 
 - Node.js 18+
 - npm
-- PostgreSQL running locally or remotely
+- PostgreSQL (Neon recommended: set both `DATABASE_URL` and `DIRECT_URL`)
 
 ## Quick Start
 
-### 1. Database
-
-Create a PostgreSQL database (example name: `transitops`), then set `DATABASE_URL` in `backend/.env`.
-
-### 2. Backend
+### 1. Backend
 
 ```bash
 cd backend
-cp .env.example .env
+cp .env.example .env   # set Neon pooled + direct URLs
 npm install
-npx prisma migrate dev --name init
-npm run seed   # optional demo users
+npx prisma migrate dev
+npm run seed
 npm run dev
 ```
 
 API: `http://localhost:4000`
 
-### 3. Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -53,21 +49,33 @@ npm run dev
 
 App: `http://localhost:5173`
 
-## Roles (RBAC)
+## Demo Users (after seed)
 
-| Role | Focus |
-|------|--------|
-| Fleet Manager | Vehicles, maintenance, fleet KPIs |
-| Driver / Dispatcher | Trips create / dispatch / complete |
-| Safety Officer | Drivers, license compliance |
-| Financial Analyst | Fuel, expenses, reports |
+Password for all: `password123`
 
-## Team Workflow
+| Email | Role |
+|-------|------|
+| fleet@transitops.local | Fleet Manager |
+| driver@transitops.local | Driver / Dispatcher |
+| safety@transitops.local | Safety Officer |
+| finance@transitops.local | Financial Analyst |
 
-Commit often from each member’s own Git identity. Prefer short feature branches and clear messages:
+## Demo Workflow
 
-`feat|fix|chore|docs(scope): short description`
+1. Fleet Manager → register vehicle **Van-05** (max 500 kg)
+2. Safety Officer → register driver **Alex** (valid license)
+3. Driver/Fleet → create trip cargo **450 kg** → Dispatch
+4. Complete trip with final odometer + fuel
+5. Fleet Manager → open maintenance (vehicle goes **In Shop**, hidden from dispatch)
+6. Finance → review fuel/expenses and export CSV report
 
-## License
+## Features
 
-Hackathon project — for evaluation use.
+- Auth + JWT RBAC
+- Vehicles & Drivers CRUD
+- Trip lifecycle with business-rule validations
+- Maintenance open/close status sync
+- Fuel & expenses + operational cost
+- Dashboard KPIs + reports/CSV
+
+

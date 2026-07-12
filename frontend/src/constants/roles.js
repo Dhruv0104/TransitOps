@@ -12,8 +12,8 @@ export const ROUTE_PERMISSIONS = {
   '/drivers': [ROLES.SAFETY_OFFICER],
   '/trips': [ROLES.FLEET_MANAGER, ROLES.DRIVER],
   '/maintenance': [ROLES.FLEET_MANAGER],
-  '/expenses': [ROLES.FINANCIAL_ANALYST],
-  '/reports': [ROLES.FINANCIAL_ANALYST],
+  '/expenses': [ROLES.FINANCIAL_ANALYST, ROLES.FLEET_MANAGER],
+  '/reports': [ROLES.FINANCIAL_ANALYST, ROLES.FLEET_MANAGER],
 }
 
 export const NAV_LINKS = [
