@@ -36,6 +36,12 @@ export default function TripsPage() {
     revenue: '',
   })
   const [saving, setSaving] = useState(false)
+  const [filters, setFilters] = useState({
+    q: '',
+    status: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  })
 
   const availableVehicles = useMemo(() => {
     const list = vehicles.filter((v) => v.status === 'AVAILABLE')
@@ -67,8 +73,15 @@ export default function TripsPage() {
     setLoading(true)
     setError('')
     try {
+      const params = new URLSearchParams()
+      if (filters.q) params.set('q', filters.q)
+      if (filters.status) params.set('status', filters.status)
+      if (filters.sortBy) params.set('sortBy', filters.sortBy)
+      if (filters.sortOrder) params.set('sortOrder', filters.sortOrder)
+      const qs = params.toString()
+
       const [tripData, vehicleData, driverData] = await Promise.all([
-        apiRequest('/trips', { token }),
+        apiRequest(`/trips${qs ? `?${qs}` : ''}`, { token }),
         apiRequest('/vehicles', { token }),
         apiRequest('/drivers', { token }),
       ])
@@ -80,7 +93,7 @@ export default function TripsPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, filters])
 
   useEffect(() => {
     load()
@@ -92,8 +105,28 @@ export default function TripsPage() {
       setError('Select source and destination on the map or via search')
       return
     }
-    if (!form.plannedDistance) {
+    if (!form.vehicleId) {
+      setError('Vehicle is required')
+      return
+    }
+    if (!form.driverId) {
+      setError('Driver is required')
+      return
+    }
+    if (
+      form.cargoWeightKg === '' ||
+      Number.isNaN(Number(form.cargoWeightKg)) ||
+      Number(form.cargoWeightKg) <= 0
+    ) {
+      setError('Cargo weight must be greater than 0')
+      return
+    }
+    if (!form.plannedDistance || Number(form.plannedDistance) <= 0) {
       setError('Distance could not be calculated — set both map points')
+      return
+    }
+    if (form.revenue !== '' && (Number.isNaN(Number(form.revenue)) || Number(form.revenue) < 0)) {
+      setError('Revenue cannot be negative')
       return
     }
     if (overload) {
@@ -263,6 +296,47 @@ export default function TripsPage() {
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <input
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          placeholder="Search route…"
+          value={filters.q}
+          onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+        />
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.status}
+          onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+        >
+          <option value="">All statuses</option>
+          {['DRAFT', 'DISPATCHED', 'COMPLETED', 'CANCELLED'].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.sortBy}
+          onChange={(e) => setFilters((f) => ({ ...f, sortBy: e.target.value }))}
+        >
+          <option value="createdAt">Sort: Created</option>
+          <option value="status">Sort: Status</option>
+          <option value="cargoWeightKg">Sort: Cargo</option>
+          <option value="plannedDistance">Sort: Distance</option>
+        </select>
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.sortOrder}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, sortOrder: e.target.value }))
+          }
+        >
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+      </div>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="min-w-full text-left text-sm">
