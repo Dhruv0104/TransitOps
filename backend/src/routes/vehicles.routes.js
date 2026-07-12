@@ -6,8 +6,16 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/", authorize("FLEET_MANAGER"), vehiclesController.list);
-router.get("/:id", authorize("FLEET_MANAGER"), vehiclesController.getById);
+router.get(
+  "/",
+  authorize("FLEET_MANAGER", "DRIVER", "FINANCIAL_ANALYST"),
+  vehiclesController.list
+);
+router.get(
+  "/:id",
+  authorize("FLEET_MANAGER", "DRIVER", "FINANCIAL_ANALYST"),
+  vehiclesController.getById
+);
 router.post("/", authorize("FLEET_MANAGER"), vehiclesController.create);
 router.put("/:id", authorize("FLEET_MANAGER"), vehiclesController.update);
 router.delete("/:id", authorize("FLEET_MANAGER"), vehiclesController.remove);

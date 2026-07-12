@@ -6,8 +6,16 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/", authorize("SAFETY_OFFICER"), driversController.list);
-router.get("/:id", authorize("SAFETY_OFFICER"), driversController.getById);
+router.get(
+  "/",
+  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DRIVER"),
+  driversController.list
+);
+router.get(
+  "/:id",
+  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DRIVER"),
+  driversController.getById
+);
 router.post("/", authorize("SAFETY_OFFICER"), driversController.create);
 router.put("/:id", authorize("SAFETY_OFFICER"), driversController.update);
 router.delete("/:id", authorize("SAFETY_OFFICER"), driversController.remove);

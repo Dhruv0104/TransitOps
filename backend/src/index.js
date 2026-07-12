@@ -6,7 +6,13 @@ const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
 const vehiclesRoutes = require("./routes/vehicles.routes");
 const driversRoutes = require("./routes/drivers.routes");
-const { authenticate } = require("./middleware/auth");
+const tripsRoutes = require("./routes/trips.routes");
+const maintenanceRoutes = require("./routes/maintenance.routes");
+const expensesRoutes = require("./routes/expenses.routes");
+const fuelRoutes = require("./routes/fuel.routes");
+const dashboardRoutes = require("./routes/dashboard.routes");
+const reportsRoutes = require("./routes/reports.routes");
+const routingRoutes = require("./routes/routing.routes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,19 +24,13 @@ app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/vehicles", vehiclesRoutes);
 app.use("/api/drivers", driversRoutes);
-
-function notImplemented(message) {
-  return (_req, res) => {
-    res.status(501).json({ message });
-  };
-}
-
-app.use("/api/trips", authenticate, notImplemented("Trips API coming soon"));
-app.use("/api/maintenance", authenticate, notImplemented("Maintenance API coming soon"));
-app.use("/api/fuel", authenticate, notImplemented("Fuel API coming soon"));
-app.use("/api/expenses", authenticate, notImplemented("Expenses API coming soon"));
-app.use("/api/dashboard", authenticate, notImplemented("Dashboard API coming soon"));
-app.use("/api/reports", authenticate, notImplemented("Reports API coming soon"));
+app.use("/api/trips", tripsRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/expenses", expensesRoutes);
+app.use("/api/fuel", fuelRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/routing", routingRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
