@@ -57,6 +57,7 @@ async function syncExpiredLicenseStatus(drivers) {
 function parseDriverPayload(body) {
   const {
     name,
+    email,
     licenseNumber,
     licenseCategory,
     licenseExpiry,
@@ -67,6 +68,7 @@ function parseDriverPayload(body) {
 
   return {
     name: name?.trim(),
+    email: email?.trim()?.toLowerCase() || null,
     licenseNumber: licenseNumber?.trim(),
     licenseCategory: licenseCategory?.trim(),
     licenseExpiry: licenseExpiry || undefined,
@@ -79,6 +81,8 @@ function parseDriverPayload(body) {
   };
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function validateCreate(data) {
   if (
     !data.name ||
@@ -88,6 +92,12 @@ function validateCreate(data) {
     !data.contactNumber
   ) {
     return "name, licenseNumber, licenseCategory, licenseExpiry, and contactNumber are required";
+  }
+  if (!data.email) {
+    return "email is required";
+  }
+  if (!EMAIL_RE.test(data.email)) {
+    return "email must be a valid email address";
   }
   const expiry = new Date(data.licenseExpiry);
   if (Number.isNaN(expiry.getTime())) {
@@ -109,19 +119,31 @@ function validateCreate(data) {
 
 async function list(req, res, next) {
   try {
-    const { status, q } = req.query;
+    const { status, q, sortBy, sortOrder } = req.query;
     const where = {};
     if (status) where.status = status;
     if (q) {
       where.OR = [
         { name: { contains: q, mode: "insensitive" } },
         { licenseNumber: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { contactNumber: { contains: q, mode: "insensitive" } },
       ];
     }
 
+    const allowed = [
+      "createdAt",
+      "name",
+      "licenseExpiry",
+      "safetyScore",
+      "status",
+    ];
+    const field = allowed.includes(sortBy) ? sortBy : "createdAt";
+    const order = sortOrder === "asc" ? "asc" : "desc";
+
     const drivers = await prisma.driver.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: order },
     });
 
     await syncExpiredLicenseStatus(drivers);
@@ -168,6 +190,7 @@ async function create(req, res, next) {
     const driver = await prisma.driver.create({
       data: {
         name: data.name,
+        email: data.email,
         licenseNumber: data.licenseNumber,
         licenseCategory: data.licenseCategory,
         licenseExpiry: expiryDate,
@@ -208,6 +231,14 @@ async function update(req, res, next) {
         return res.status(400).json({ message: "licenseExpiry must be a valid date" });
       }
     }
+    if (data.email !== undefined && data.email !== null) {
+      if (!data.email) {
+        return res.status(400).json({ message: "email is required" });
+      }
+      if (!EMAIL_RE.test(data.email)) {
+        return res.status(400).json({ message: "email must be a valid email address" });
+      }
+    }
     if (
       data.safetyScore !== undefined &&
       (Number.isNaN(data.safetyScore) ||
@@ -241,6 +272,7 @@ async function update(req, res, next) {
       where: { id: req.params.id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
+        ...(data.email !== undefined && { email: data.email }),
         ...(data.licenseNumber !== undefined && {
           licenseNumber: data.licenseNumber,
         }),

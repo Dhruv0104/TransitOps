@@ -64,12 +64,24 @@ async function assertAssignable(vehicleId, driverId, cargoWeightKg) {
 
 async function list(req, res, next) {
   try {
-    const { status } = req.query;
-    const where = status ? { status } : {};
+    const { status, q, sortBy, sortOrder } = req.query;
+    const where = {};
+    if (status) where.status = status;
+    if (q) {
+      where.OR = [
+        { source: { contains: q, mode: "insensitive" } },
+        { destination: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const allowed = ["createdAt", "status", "cargoWeightKg", "plannedDistance"];
+    const field = allowed.includes(sortBy) ? sortBy : "createdAt";
+    const order = sortOrder === "asc" ? "asc" : "desc";
+
     const trips = await prisma.trip.findMany({
       where,
       include: tripInclude(),
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: order },
     });
     return res.json({ trips });
   } catch (err) {

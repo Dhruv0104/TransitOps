@@ -8,5 +8,6 @@ const reportRoles = ["FINANCIAL_ANALYST", "FLEET_MANAGER"];
 router.use(authenticate);
 router.get("/", authorize(...reportRoles), reportsController.getAnalytics);
 router.get("/export.csv", authorize(...reportRoles), reportsController.exportCsv);
+router.get("/export.pdf", authorize(...reportRoles), reportsController.exportPdf);
 
 module.exports = router;

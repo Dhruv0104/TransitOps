@@ -47,7 +47,6 @@ model User {
   name      String
   role      Role
   isActive  Boolean  @default(true)
-  verified  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -82,20 +81,36 @@ model Vehicle {
   maintenanceLogs MaintenanceLog[]
   fuelLogs        FuelLog[]
   expenses        Expense[]
+  documents       VehicleDocument[]
+}
+
+model VehicleDocument {
+  id         String   @id @default(uuid())
+  vehicleId  String
+  title      String
+  docType    String
+  fileName   String
+  storedName  String
+  mimeType   String?
+  expiresAt  DateTime?
+  uploadedAt DateTime @default(now())
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 }
 
 model Driver {
-  id              String       @id @default(uuid())
-  name            String
-  licenseNumber   String       @unique
-  licenseCategory String
-  licenseExpiry   DateTime
-  contactNumber   String
-  safetyScore     Int          @default(100)
-  status          DriverStatus @default(AVAILABLE)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  trips           Trip[]
+  id                     String       @id @default(uuid())
+  name                   String
+  email                  String?
+  licenseNumber          String       @unique
+  licenseCategory        String
+  licenseExpiry          DateTime
+  contactNumber          String
+  safetyScore            Int          @default(100)
+  status                 DriverStatus @default(AVAILABLE)
+  lastLicenseReminderAt  DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  trips                  Trip[]
 }
 
 model Trip {

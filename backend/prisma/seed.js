@@ -6,45 +6,51 @@ const prisma = new PrismaClient();
 async function main() {
   const password = await bcrypt.hash("password123", 10);
 
-  // Remove old demo email if present from earlier DRIVER role naming
+  // Remove old demo emails
   await prisma.user.deleteMany({
-    where: { email: "driver@transitops.local" },
+    where: {
+      email: {
+        in: [
+          "driver@transitops.local",
+          "admin@transitops.local",
+          "fleet@transitops.local",
+          "dispatcher@transitops.local",
+          "safety@transitops.local",
+          "finance@transitops.local",
+        ],
+      },
+    },
   });
 
   const users = [
     {
-      email: "admin@transitops.local",
+      email: "dvpatel6048@gmail.com",
       name: "System Admin",
       role: "ADMIN",
-      verified: true,
       isActive: true,
     },
     {
-      email: "fleet@transitops.local",
+      email: "patelromil.surajnagar@gmail.com",
       name: "Fleet Manager",
       role: "FLEET_MANAGER",
-      verified: true,
       isActive: true,
     },
     {
-      email: "dispatcher@transitops.local",
+      email: "nazneenpatel189@gmail.com",
       name: "Dispatcher",
       role: "DISPATCHER",
-      verified: true,
       isActive: true,
     },
     {
-      email: "safety@transitops.local",
+      email: "nehapatel200512@gmail.com",
       name: "Safety Officer",
       role: "SAFETY_OFFICER",
-      verified: true,
       isActive: true,
     },
     {
-      email: "finance@transitops.local",
+      email: "echoflex2024@gmail.com",
       name: "Financial Analyst",
       role: "FINANCIAL_ANALYST",
-      verified: true,
       isActive: true,
     },
   ];
@@ -56,7 +62,6 @@ async function main() {
         name: user.name,
         role: user.role,
         password,
-        verified: user.verified,
         isActive: user.isActive,
       },
       create: { ...user, password },

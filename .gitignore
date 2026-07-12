@@ -40,3 +40,8 @@ coverage/
 # Misc
 *.local
 .DS_Store
+
+# Uploaded vehicle documents
+backend/uploads/
+**/uploads/*
+!**/uploads/.gitkeep

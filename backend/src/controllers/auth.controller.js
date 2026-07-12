@@ -24,7 +24,6 @@ function toSafeUser(user) {
     name: user.name,
     role: user.role,
     isActive: user.isActive,
-    verified: user.verified,
   };
 }
 
@@ -38,13 +37,25 @@ async function register(req, res, next) {
       });
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).json({ message: "Email must be valid" });
+    }
+
+    if (String(password).length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
+    }
+
     if (!VALID_ROLES.includes(role)) {
       return res.status(400).json({
         message: `Invalid role. Use one of: ${VALID_ROLES.join(", ")}`,
       });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({
+      where: { email: String(email).trim().toLowerCase() },
+    });
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
     }
@@ -52,11 +63,10 @@ async function register(req, res, next) {
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
-        email,
+        email: String(email).trim().toLowerCase(),
         password: hashed,
-        name,
+        name: String(name).trim(),
         role,
-        verified: false,
         isActive: true,
       },
       select: {
@@ -65,7 +75,6 @@ async function register(req, res, next) {
         name: true,
         role: true,
         isActive: true,
-        verified: true,
       },
     });
 
@@ -84,7 +93,17 @@ async function login(req, res, next) {
       return res.status(400).json({ message: "email and password are required" });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email: String(email).trim().toLowerCase() },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        name: true,
+        role: true,
+        isActive: true,
+      },
+    });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -119,7 +138,6 @@ async function me(req, res, next) {
         name: true,
         role: true,
         isActive: true,
-        verified: true,
       },
     });
 

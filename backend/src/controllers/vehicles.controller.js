@@ -1,6 +1,16 @@
 const prisma = require("../lib/prisma");
+const { parseSort } = require("../lib/sort");
 
 const VEHICLE_STATUSES = ["AVAILABLE", "ON_TRIP", "IN_SHOP", "RETIRED"];
+const SORT_FIELDS = [
+  "createdAt",
+  "registrationNo",
+  "name",
+  "type",
+  "status",
+  "odometer",
+  "maxLoadKg",
+];
 
 function parseVehiclePayload(body) {
   const {
@@ -36,6 +46,9 @@ function parseVehiclePayload(body) {
 function validateCreate(data) {
   if (!data.registrationNo || !data.name || !data.type) {
     return "registrationNo, name, and type are required";
+  }
+  if (!data.region) {
+    return "region is required (select on map)";
   }
   if (data.maxLoadKg === undefined || Number.isNaN(data.maxLoadKg)) {
     return "maxLoadKg is required and must be a number";
@@ -78,7 +91,7 @@ async function list(req, res, next) {
 
     const vehicles = await prisma.vehicle.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: parseSort(req.query, SORT_FIELDS, "createdAt"),
     });
 
     return res.json({ vehicles });
