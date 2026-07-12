@@ -81,10 +81,15 @@ export default function DriversPage() {
     setError('')
     try {
       const body = {
-        ...form,
-        safetyScore: Number(form.safetyScore),
+        name: form.name,
+        licenseNumber: form.licenseNumber,
+        licenseCategory: form.licenseCategory,
+        licenseExpiry: form.licenseExpiry,
+        contactNumber: form.contactNumber,
       }
       if (editing) {
+        body.safetyScore = Number(form.safetyScore)
+        body.status = form.status
         await apiRequest(`/drivers/${editing.id}`, {
           method: 'PUT',
           token,
@@ -309,35 +314,39 @@ export default function DriversPage() {
                 }
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold">
-              Safety Score
-              <input
-                type="number"
-                min="0"
-                max="100"
-                className="rounded-lg border border-line px-3 py-2 font-normal"
-                value={form.safetyScore}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, safetyScore: e.target.value }))
-                }
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold sm:col-span-2">
-              Status
-              <select
-                className="rounded-lg border border-line px-3 py-2 font-normal"
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value }))
-                }
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replaceAll('_', ' ')}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {editing ? (
+              <>
+                <label className="flex flex-col gap-1 text-sm font-semibold">
+                  Safety Score
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="rounded-lg border border-line px-3 py-2 font-normal"
+                    value={form.safetyScore}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, safetyScore: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-semibold">
+                  Status
+                  <select
+                    className="rounded-lg border border-line px-3 py-2 font-normal"
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, status: e.target.value }))
+                    }
+                  >
+                    {STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s.replaceAll('_', ' ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : null}
             <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
               <button
                 type="button"

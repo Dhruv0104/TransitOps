@@ -87,13 +87,16 @@ export default function VehiclesPage() {
     setError('')
     try {
       const body = {
-        ...form,
+        registrationNo: form.registrationNo,
+        name: form.name,
+        type: form.type,
         maxLoadKg: Number(form.maxLoadKg),
         odometer: Number(form.odometer || 0),
         acquisitionCost: Number(form.acquisitionCost),
         region: form.region || null,
       }
       if (editing) {
+        body.status = form.status
         await apiRequest(`/vehicles/${editing.id}`, {
           method: 'PUT',
           token,
@@ -328,22 +331,24 @@ export default function VehiclesPage() {
                 }
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold">
-              Status
-              <select
-                className="rounded-lg border border-line px-3 py-2 font-normal"
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value }))
-                }
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replaceAll('_', ' ')}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {editing ? (
+              <label className="flex flex-col gap-1 text-sm font-semibold">
+                Status
+                <select
+                  className="rounded-lg border border-line px-3 py-2 font-normal"
+                  value={form.status}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, status: e.target.value }))
+                  }
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replaceAll('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="flex flex-col gap-1 text-sm font-semibold">
               Region
               <input
