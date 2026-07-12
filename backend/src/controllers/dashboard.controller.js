@@ -15,12 +15,21 @@ async function getKpis(req, res, next) {
     const inMaintenance = vehicles.filter((v) => v.status === "IN_SHOP").length;
     const onTripVehicles = vehicles.filter((v) => v.status === "ON_TRIP").length;
 
-    const [activeTrips, pendingTrips, driversOnDuty, totalDrivers] = await Promise.all([
-      prisma.trip.count({ where: { status: "DISPATCHED" } }),
-      prisma.trip.count({ where: { status: "DRAFT" } }),
-      prisma.driver.count({ where: { status: "ON_TRIP" } }),
-      prisma.driver.count(),
-    ]);
+    const [activeTrips, pendingTrips, driversOnDuty, totalDrivers, recentTrips] =
+      await Promise.all([
+        prisma.trip.count({ where: { status: "DISPATCHED" } }),
+        prisma.trip.count({ where: { status: "DRAFT" } }),
+        prisma.driver.count({ where: { status: "ON_TRIP" } }),
+        prisma.driver.count(),
+        prisma.trip.findMany({
+          take: 8,
+          orderBy: { updatedAt: "desc" },
+          include: {
+            vehicle: { select: { registrationNo: true, name: true } },
+            driver: { select: { name: true } },
+          },
+        }),
+      ]);
 
     const fleetUtilization =
       nonRetired.length === 0
@@ -50,6 +59,17 @@ async function getKpis(req, res, next) {
         name: v.name,
         status: v.status,
         region: v.region,
+      })),
+      recentTrips: recentTrips.map((t) => ({
+        id: t.id,
+        source: t.source,
+        destination: t.destination,
+        status: t.status,
+        cargoWeightKg: t.cargoWeightKg,
+        plannedDistance: t.plannedDistance,
+        vehicle: t.vehicle,
+        driver: t.driver,
+        updatedAt: t.updatedAt,
       })),
     });
   } catch (err) {

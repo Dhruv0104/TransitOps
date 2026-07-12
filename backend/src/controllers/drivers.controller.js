@@ -21,12 +21,37 @@ function daysUntilExpiry(expiry) {
 function enrichDriver(driver) {
   const expired = isLicenseExpired(driver.licenseExpiry);
   const daysLeft = daysUntilExpiry(driver.licenseExpiry);
+  const status =
+    expired && driver.status !== "ON_TRIP" ? "SUSPENDED" : driver.status;
+
   return {
     ...driver,
+    status,
     licenseExpired: expired,
     licenseExpiringSoon: !expired && daysLeft !== null && daysLeft <= 30,
     daysUntilLicenseExpiry: daysLeft,
   };
+}
+
+async function syncExpiredLicenseStatus(drivers) {
+  const updates = [];
+  for (const driver of drivers) {
+    if (
+      isLicenseExpired(driver.licenseExpiry) &&
+      driver.status !== "SUSPENDED" &&
+      driver.status !== "ON_TRIP"
+    ) {
+      updates.push(
+        prisma.driver.update({
+          where: { id: driver.id },
+          data: { status: "SUSPENDED" },
+        })
+      );
+      driver.status = "SUSPENDED";
+    }
+  }
+  if (updates.length) await Promise.all(updates);
+  return drivers;
 }
 
 function parseDriverPayload(body) {
@@ -99,6 +124,8 @@ async function list(req, res, next) {
       orderBy: { createdAt: "desc" },
     });
 
+    await syncExpiredLicenseStatus(drivers);
+
     return res.json({ drivers: drivers.map(enrichDriver) });
   } catch (err) {
     return next(err);
@@ -113,6 +140,9 @@ async function getById(req, res, next) {
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
+
+    await syncExpiredLicenseStatus([driver]);
+
     return res.json({ driver: enrichDriver(driver) });
   } catch (err) {
     return next(err);
@@ -132,15 +162,18 @@ async function create(req, res, next) {
       return res.status(409).json({ message: "License number must be unique" });
     }
 
+    const expiryDate = new Date(data.licenseExpiry);
+    const expired = isLicenseExpired(expiryDate);
+
     const driver = await prisma.driver.create({
       data: {
         name: data.name,
         licenseNumber: data.licenseNumber,
         licenseCategory: data.licenseCategory,
-        licenseExpiry: new Date(data.licenseExpiry),
+        licenseExpiry: expiryDate,
         contactNumber: data.contactNumber,
         safetyScore: data.safetyScore ?? 100,
-        status: data.status || "AVAILABLE",
+        status: expired ? "SUSPENDED" : data.status || "AVAILABLE",
       },
     });
 
@@ -193,6 +226,17 @@ async function update(req, res, next) {
       }
     }
 
+    const nextExpiry =
+      data.licenseExpiry !== undefined
+        ? new Date(data.licenseExpiry)
+        : existing.licenseExpiry;
+    const expired = isLicenseExpired(nextExpiry);
+
+    let nextStatus = data.status !== undefined ? data.status : existing.status;
+    if (expired && existing.status !== "ON_TRIP") {
+      nextStatus = "SUSPENDED";
+    }
+
     const driver = await prisma.driver.update({
       where: { id: req.params.id },
       data: {
@@ -204,7 +248,7 @@ async function update(req, res, next) {
           licenseCategory: data.licenseCategory,
         }),
         ...(data.licenseExpiry !== undefined && {
-          licenseExpiry: new Date(data.licenseExpiry),
+          licenseExpiry: nextExpiry,
         }),
         ...(data.contactNumber !== undefined && {
           contactNumber: data.contactNumber,
@@ -212,7 +256,7 @@ async function update(req, res, next) {
         ...(data.safetyScore !== undefined && {
           safetyScore: data.safetyScore,
         }),
-        ...(data.status !== undefined && { status: data.status }),
+        status: nextStatus,
       },
     });
 

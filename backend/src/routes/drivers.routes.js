@@ -8,12 +8,12 @@ router.use(authenticate);
 
 router.get(
   "/",
-  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DRIVER"),
+  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DISPATCHER"),
   driversController.list
 );
 router.get(
   "/:id",
-  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DRIVER"),
+  authorize("SAFETY_OFFICER", "FLEET_MANAGER", "DISPATCHER"),
   driversController.getById
 );
 router.post("/", authorize("SAFETY_OFFICER"), driversController.create);

@@ -55,8 +55,9 @@ Password for all: `password123`
 
 | Email | Role |
 |-------|------|
+| admin@transitops.local | Admin (full access, users & settings) |
 | fleet@transitops.local | Fleet Manager |
-| driver@transitops.local | Driver / Dispatcher |
+| dispatcher@transitops.local | Dispatcher |
 | safety@transitops.local | Safety Officer |
 | finance@transitops.local | Financial Analyst |
 
@@ -64,14 +65,16 @@ Password for all: `password123`
 
 1. Fleet Manager → register vehicle **Van-05** (max 500 kg)
 2. Safety Officer → register driver **Alex** (valid license)
-3. Driver/Fleet → create trip cargo **450 kg** → Dispatch
+3. Dispatcher/Fleet → create trip cargo **450 kg** → Dispatch
 4. Complete trip with final odometer + fuel
 5. Fleet Manager → open maintenance (vehicle goes **In Shop**, hidden from dispatch)
 6. Finance → review fuel/expenses and export CSV report
 
 ## Features
 
-- Auth + JWT RBAC
+- Auth + JWT RBAC (including Admin panel)
+- Users & verification (Admin)
+- Organization settings + RBAC matrix (Admin)
 - Vehicles & Drivers CRUD
 - Trip lifecycle with business-rule validations
 - Maintenance open/close status sync

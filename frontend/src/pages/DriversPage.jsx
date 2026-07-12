@@ -138,13 +138,13 @@ export default function DriversPage() {
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <input
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           placeholder="Search name / license"
           value={filters.q}
           onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
         />
         <select
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           value={filters.status}
           onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
         >
@@ -226,7 +226,14 @@ export default function DriversPage() {
                   <td className="px-4 py-3">{driver.contactNumber}</td>
                   <td className="px-4 py-3">{driver.safetyScore}%</td>
                   <td className="px-4 py-3">
-                    <StatusBadge value={driver.status} kind="driver" />
+                    <StatusBadge
+                      value={
+                        driver.licenseExpired && driver.status !== 'ON_TRIP'
+                          ? 'SUSPENDED'
+                          : driver.status
+                      }
+                      kind="driver"
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">

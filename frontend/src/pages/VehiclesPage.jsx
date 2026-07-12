@@ -145,13 +145,13 @@ export default function VehiclesPage() {
 
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         <input
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           placeholder="Search reg / name"
           value={filters.q}
           onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
         />
         <select
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           value={filters.type}
           onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
         >
@@ -163,7 +163,7 @@ export default function VehiclesPage() {
           ))}
         </select>
         <select
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           value={filters.status}
           onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
         >
@@ -175,7 +175,7 @@ export default function VehiclesPage() {
           ))}
         </select>
         <select
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           value={filters.region}
           onChange={(e) => setFilters((f) => ({ ...f, region: e.target.value }))}
         >
