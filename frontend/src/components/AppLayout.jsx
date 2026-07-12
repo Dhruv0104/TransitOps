@@ -1,15 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-
-const links = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/vehicles', label: 'Vehicles' },
-  { to: '/drivers', label: 'Drivers' },
-  { to: '/trips', label: 'Trips' },
-  { to: '/maintenance', label: 'Maintenance' },
-  { to: '/expenses', label: 'Fuel & Expenses' },
-  { to: '/reports', label: 'Reports' },
-]
+import { getNavLinksForRole } from '../constants/roles'
 
 const navClass = ({ isActive }) =>
   [
@@ -20,12 +11,21 @@ const navClass = ({ isActive }) =>
   ].join(' ')
 
 export default function AppLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, ready } = useAuth()
   const navigate = useNavigate()
+  const links = getNavLinksForRole(user?.role)
 
   function handleLogout() {
     logout()
     navigate('/login')
+  }
+
+  if (!ready) {
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-muted">
+        Checking session…
+      </div>
+    )
   }
 
   return (

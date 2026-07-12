@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
+const { authenticate } = require("./middleware/auth");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,31 +15,21 @@ app.use(express.json());
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 
-// Placeholder mounts for upcoming modules
-app.use("/api/vehicles", (_req, res) => {
-  res.status(501).json({ message: "Vehicles API coming soon" });
-});
-app.use("/api/drivers", (_req, res) => {
-  res.status(501).json({ message: "Drivers API coming soon" });
-});
-app.use("/api/trips", (_req, res) => {
-  res.status(501).json({ message: "Trips API coming soon" });
-});
-app.use("/api/maintenance", (_req, res) => {
-  res.status(501).json({ message: "Maintenance API coming soon" });
-});
-app.use("/api/fuel", (_req, res) => {
-  res.status(501).json({ message: "Fuel API coming soon" });
-});
-app.use("/api/expenses", (_req, res) => {
-  res.status(501).json({ message: "Expenses API coming soon" });
-});
-app.use("/api/dashboard", (_req, res) => {
-  res.status(501).json({ message: "Dashboard API coming soon" });
-});
-app.use("/api/reports", (_req, res) => {
-  res.status(501).json({ message: "Reports API coming soon" });
-});
+function notImplemented(message) {
+  return (_req, res) => {
+    res.status(501).json({ message });
+  };
+}
+
+// Protected module mounts — require JWT until real routers replace these
+app.use("/api/vehicles", authenticate, notImplemented("Vehicles API coming soon"));
+app.use("/api/drivers", authenticate, notImplemented("Drivers API coming soon"));
+app.use("/api/trips", authenticate, notImplemented("Trips API coming soon"));
+app.use("/api/maintenance", authenticate, notImplemented("Maintenance API coming soon"));
+app.use("/api/fuel", authenticate, notImplemented("Fuel API coming soon"));
+app.use("/api/expenses", authenticate, notImplemented("Expenses API coming soon"));
+app.use("/api/dashboard", authenticate, notImplemented("Dashboard API coming soon"));
+app.use("/api/reports", authenticate, notImplemented("Reports API coming soon"));
 
 app.use((err, _req, res, _next) => {
   console.error(err);

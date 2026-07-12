@@ -9,10 +9,26 @@ import TripsPage from './pages/TripsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import ExpensesPage from './pages/ExpensesPage'
 import ReportsPage from './pages/ReportsPage'
+import { canAccessRoute } from './constants/roles'
 
 function ProtectedRoute({ children }) {
-  const { token } = useAuth()
+  const { token, ready } = useAuth()
+  if (!ready) {
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-muted">
+        Checking session…
+      </div>
+    )
+  }
   if (!token) return <Navigate to="/login" replace />
+  return children
+}
+
+function RoleRoute({ path, children }) {
+  const { user } = useAuth()
+  if (!canAccessRoute(user?.role, path)) {
+    return <Navigate to="/" replace />
+  }
   return children
 }
 
@@ -30,13 +46,62 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
-            <Route path="vehicles" element={<VehiclesPage />} />
-            <Route path="drivers" element={<DriversPage />} />
-            <Route path="trips" element={<TripsPage />} />
-            <Route path="maintenance" element={<MaintenancePage />} />
-            <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+            <Route
+              index
+              element={
+                <RoleRoute path="/">
+                  <DashboardPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="vehicles"
+              element={
+                <RoleRoute path="/vehicles">
+                  <VehiclesPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="drivers"
+              element={
+                <RoleRoute path="/drivers">
+                  <DriversPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="trips"
+              element={
+                <RoleRoute path="/trips">
+                  <TripsPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="maintenance"
+              element={
+                <RoleRoute path="/maintenance">
+                  <MaintenancePage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="expenses"
+              element={
+                <RoleRoute path="/expenses">
+                  <ExpensesPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <RoleRoute path="/reports">
+                  <ReportsPage />
+                </RoleRoute>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

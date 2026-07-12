@@ -4,12 +4,20 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
-  const { token, login } = useAuth()
+  const { token, login, ready } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('fleet@transitops.local')
   const [password, setPassword] = useState('password123')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  if (!ready) {
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-muted">
+        Checking session…
+      </div>
+    )
+  }
 
   if (token) return <Navigate to="/" replace />
 
