@@ -4,6 +4,8 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
+const vehiclesRoutes = require("./routes/vehicles.routes");
+const driversRoutes = require("./routes/drivers.routes");
 const { authenticate } = require("./middleware/auth");
 
 const app = express();
@@ -14,6 +16,8 @@ app.use(express.json());
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/vehicles", vehiclesRoutes);
+app.use("/api/drivers", driversRoutes);
 
 function notImplemented(message) {
   return (_req, res) => {
@@ -21,9 +25,6 @@ function notImplemented(message) {
   };
 }
 
-// Protected module mounts — require JWT until real routers replace these
-app.use("/api/vehicles", authenticate, notImplemented("Vehicles API coming soon"));
-app.use("/api/drivers", authenticate, notImplemented("Drivers API coming soon"));
 app.use("/api/trips", authenticate, notImplemented("Trips API coming soon"));
 app.use("/api/maintenance", authenticate, notImplemented("Maintenance API coming soon"));
 app.use("/api/fuel", authenticate, notImplemented("Fuel API coming soon"));
