@@ -9,6 +9,8 @@ import TripsPage from './pages/TripsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import ExpensesPage from './pages/ExpensesPage'
 import ReportsPage from './pages/ReportsPage'
+import UsersPage from './pages/UsersPage'
+import SettingsPage from './pages/SettingsPage'
 import { canAccessRoute } from './constants/roles'
 
 function ProtectedRoute({ children }) {
@@ -99,6 +101,22 @@ function App() {
               element={
                 <RoleRoute path="/reports">
                   <ReportsPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <RoleRoute path="/users">
+                  <UsersPage />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <RoleRoute path="/settings">
+                  <SettingsPage />
                 </RoleRoute>
               }
             />
