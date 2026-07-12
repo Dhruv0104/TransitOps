@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,7 +13,6 @@ import { useOrg } from '../context/OrgContext'
 import { KpiSkeleton, PanelSkeleton, TableSkeleton } from '../components/Skeleton'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-const PIE_COLORS = ['#f97316', '#38bdf8', '#34d399', '#a78bfa']
 
 export default function ReportsPage() {
   const { token } = useAuth()
@@ -69,19 +65,15 @@ export default function ReportsPage() {
   }
 
   const summary = data?.summary
-  const costChart = (data?.vehicles || []).map((v) => ({
-    name: v.registrationNo,
-    operationalCost: Number(v.operationalCost.toFixed(2)),
-    fuelCost: Number(v.fuelCost.toFixed(2)),
-    maintenanceCost: Number(v.maintenanceCost.toFixed(2)),
-  }))
-
-  const costBreakdown = summary
-    ? [
-        { name: 'Fuel', value: Number(summary.operationalCost > 0 ? (data.vehicles || []).reduce((s, v) => s + v.fuelCost, 0).toFixed(2) : 0) },
-        { name: 'Maintenance', value: Number((data.vehicles || []).reduce((s, v) => s + v.maintenanceCost, 0).toFixed(2)) },
-      ].filter((x) => x.value > 0)
-    : []
+  const monthlyRevenue = data?.monthlyRevenue || []
+  const topCostliest = useMemo(() => {
+    const rows = data?.topCostliest || []
+    const max = Math.max(...rows.map((r) => r.operationalCost), 0)
+    return rows.map((r) => ({
+      ...r,
+      pct: max > 0 ? Math.round((r.operationalCost / max) * 1000) / 10 : 0,
+    }))
+  }, [data?.topCostliest])
 
   return (
     <section>
@@ -114,7 +106,7 @@ export default function ReportsPage() {
 
       {loading ? (
         <div className="mt-5 space-y-6">
-          <KpiSkeleton count={4} />
+          <KpiSkeleton count={5} />
           <div className="grid gap-4 lg:grid-cols-2">
             <PanelSkeleton />
             <PanelSkeleton />
@@ -124,7 +116,7 @@ export default function ReportsPage() {
       ) : (
         <>
       {summary ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Kpi label="Fleet Utilization" value={`${summary.fleetUtilization}%`} />
           <Kpi
             label="Fuel Efficiency"
@@ -139,67 +131,69 @@ export default function ReportsPage() {
             value={formatMoney(summary.operationalCost)}
           />
           <Kpi label="Total Revenue" value={formatMoney(summary.totalRevenue)} />
+          <Kpi
+            label="ROI"
+            value={
+              summary.roi != null
+                ? `${(summary.roi * 100).toFixed(2)}%`
+                : '—'
+            }
+          />
         </div>
       ) : null}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line bg-surface p-4">
-          <h2 className="font-semibold text-ink">Operational Cost by Vehicle</h2>
+          <h2 className="font-semibold text-ink">Monthly Revenue</h2>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costChart}>
-                <CartesianGrid stroke="#2a3444" strokeDasharray="3 3" />
-                <XAxis dataKey="name" stroke="#8b98a8" tick={{ fontSize: 11 }} />
+              <BarChart data={monthlyRevenue}>
+                <CartesianGrid stroke="var(--color-line, #e5e7eb)" strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke="#8b98a8" tick={{ fontSize: 11 }} />
                 <YAxis stroke="#8b98a8" tick={{ fontSize: 11 }} />
                 <Tooltip
                   formatter={(value) => formatMoney(value)}
                   contentStyle={{
-                    background: '#1a222d',
-                    border: '1px solid #2a3444',
+                    background: 'var(--color-surface, #fff)',
+                    border: '1px solid var(--color-line, #e5e7eb)',
                     borderRadius: 8,
                   }}
                 />
-                <Bar dataKey="operationalCost" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="revenue" fill="#38bdf8" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="rounded-xl border border-line bg-surface p-4">
-          <h2 className="font-semibold text-ink">Cost Breakdown</h2>
-          <div className="mt-4 h-64">
-            {costBreakdown.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={costBreakdown}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={55}
-                    outerRadius={90}
-                    paddingAngle={3}
-                  >
-                    {costBreakdown.map((entry, i) => (
-                      <Cell
-                        key={entry.name}
-                        fill={PIE_COLORS[i % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => formatMoney(value)}
-                    contentStyle={{
-                      background: '#1a222d',
-                      border: '1px solid #2a3444',
-                      borderRadius: 8,
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+          <h2 className="font-semibold text-ink">Top Costliest Vehicles</h2>
+          <div className="mt-5 space-y-4">
+            {topCostliest.length === 0 ? (
+              <p className="text-sm text-muted">No cost data yet.</p>
             ) : (
-              <p className="grid h-full place-items-center text-sm text-muted">
-                No cost data yet
-              </p>
+              topCostliest.map((row) => (
+                <div key={row.vehicleId}>
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium text-ink">
+                      {row.registrationNo}
+                      <span className="ml-1 font-normal text-muted">
+                        — {row.name}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-muted">
+                      {formatMoney(row.operationalCost)}
+                    </span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-line/70">
+                    <div
+                      className="h-full rounded-full bg-sky-400 transition-all"
+                      style={{
+                        width: `${Math.max(row.pct, row.operationalCost > 0 ? 4 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>

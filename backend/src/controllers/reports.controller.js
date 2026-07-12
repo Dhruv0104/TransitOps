@@ -49,6 +49,41 @@ async function buildVehicleRows() {
   });
 }
 
+async function buildMonthlyRevenue() {
+  const trips = await prisma.trip.findMany({
+    where: {
+      status: "COMPLETED",
+      revenue: { not: null },
+    },
+    select: {
+      revenue: true,
+      completedAt: true,
+      createdAt: true,
+    },
+  });
+
+  const byMonth = new Map();
+  for (const t of trips) {
+    const when = t.completedAt || t.createdAt;
+    const key = `${when.getUTCFullYear()}-${String(when.getUTCMonth() + 1).padStart(2, "0")}`;
+    byMonth.set(key, (byMonth.get(key) || 0) + (t.revenue || 0));
+  }
+
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+    months.push({
+      month: key,
+      label,
+      revenue: Math.round((byMonth.get(key) || 0) * 100) / 100,
+    });
+  }
+  return months;
+}
+
 async function getAnalytics(req, res, next) {
   try {
     const rows = await buildVehicleRows();
@@ -68,6 +103,7 @@ async function getAnalytics(req, res, next) {
         acc.maintenanceCost += r.maintenanceCost;
         acc.operationalCost += r.operationalCost;
         acc.revenue += r.revenue;
+        acc.acquisitionCost += r.acquisitionCost || 0;
         return acc;
       },
       {
@@ -77,6 +113,7 @@ async function getAnalytics(req, res, next) {
         maintenanceCost: 0,
         operationalCost: 0,
         revenue: 0,
+        acquisitionCost: 0,
       }
     );
 
@@ -84,6 +121,25 @@ async function getAnalytics(req, res, next) {
       totals.fuelLiters > 0
         ? Math.round((totals.distance / totals.fuelLiters) * 100) / 100
         : null;
+
+    const fleetRoi =
+      totals.acquisitionCost > 0
+        ? Math.round(
+            ((totals.revenue - totals.operationalCost) / totals.acquisitionCost) *
+              10000
+          ) / 10000
+        : null;
+
+    const monthlyRevenue = await buildMonthlyRevenue();
+    const topCostliest = [...rows]
+      .sort((a, b) => b.operationalCost - a.operationalCost)
+      .slice(0, 6)
+      .map((v) => ({
+        vehicleId: v.vehicleId,
+        registrationNo: v.registrationNo,
+        name: v.name,
+        operationalCost: v.operationalCost,
+      }));
 
     return res.json({
       summary: {
@@ -93,7 +149,10 @@ async function getAnalytics(req, res, next) {
         totalRevenue: totals.revenue,
         totalDistance: totals.distance,
         totalFuelLiters: totals.fuelLiters,
+        roi: fleetRoi,
       },
+      monthlyRevenue,
+      topCostliest,
       vehicles: rows,
     });
   } catch (err) {

@@ -13,6 +13,7 @@ export default function ExpensesPage() {
   const [costs, setCosts] = useState([])
   const [vehicles, setVehicles] = useState([])
   const [trips, setTrips] = useState([])
+  const [tripsLoading, setTripsLoading] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [fuelOpen, setFuelOpen] = useState(false)
@@ -38,19 +39,16 @@ export default function ExpensesPage() {
     setLoading(true)
     setError('')
     try {
-      const [fuelData, expenseData, costData, vehicleData, tripData] =
-        await Promise.all([
-          apiRequest('/fuel', { token }),
-          apiRequest('/expenses', { token }),
-          apiRequest('/expenses/operational-costs', { token }),
-          apiRequest('/vehicles', { token }),
-          apiRequest('/trips', { token }),
-        ])
+      const [fuelData, expenseData, costData, vehicleData] = await Promise.all([
+        apiRequest('/fuel', { token }),
+        apiRequest('/expenses', { token }),
+        apiRequest('/expenses/operational-costs', { token }),
+        apiRequest('/vehicles', { token }),
+      ])
       setFuelLogs(fuelData.logs || [])
       setExpenses(expenseData.expenses || [])
       setCosts(costData.costs || [])
       setVehicles(vehicleData.vehicles || [])
-      setTrips(tripData.trips || [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -58,9 +56,38 @@ export default function ExpensesPage() {
     }
   }, [token])
 
+  const loadTripsForVehicle = useCallback(
+    async (vehicleId) => {
+      if (!vehicleId) {
+        setTrips([])
+        return
+      }
+      setTripsLoading(true)
+      try {
+        const tripData = await apiRequest(
+          `/trips?vehicleId=${encodeURIComponent(vehicleId)}`,
+          { token }
+        )
+        setTrips(tripData.trips || [])
+      } catch (err) {
+        setTrips([])
+        setError(err.message || 'Failed to load trips for vehicle')
+      } finally {
+        setTripsLoading(false)
+      }
+    },
+    [token]
+  )
+
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    if (expenseOpen && expenseForm.vehicleId) {
+      loadTripsForVehicle(expenseForm.vehicleId)
+    }
+  }, [expenseOpen, expenseForm.vehicleId, loadTripsForVehicle])
 
   const totalFuelCost = fuelLogs.reduce((s, l) => s + l.cost, 0)
   const totalFuelLiters = fuelLogs.reduce((s, l) => s + l.liters, 0)
@@ -75,11 +102,10 @@ export default function ExpensesPage() {
     : costs
 
   const tripsForExpenseVehicle = useMemo(() => {
-    if (!expenseForm.vehicleId) return []
-    return trips
-      .filter((t) => t.vehicleId === expenseForm.vehicleId)
-      .sort((a, b) => String(b.tripCode).localeCompare(String(a.tripCode)))
-  }, [trips, expenseForm.vehicleId])
+    return [...trips].sort((a, b) =>
+      String(b.tripCode || '').localeCompare(String(a.tripCode || ''))
+    )
+  }, [trips])
 
   function tripLabel(trip) {
     if (!trip) return '—'
@@ -452,22 +478,34 @@ export default function ExpensesPage() {
             <label className="flex flex-col gap-1 text-sm font-semibold">
               Trip
               <select
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="rounded-lg border border-line bg-surface px-3 py-2 font-normal disabled:opacity-60"
                 value={expenseForm.tripId}
-                disabled={!expenseForm.vehicleId}
+                disabled={!expenseForm.vehicleId || tripsLoading}
                 onChange={(e) =>
                   setExpenseForm((f) => ({ ...f, tripId: e.target.value }))
                 }
               >
-                <option value="">No trip (optional)</option>
+                <option value="">
+                  {!expenseForm.vehicleId
+                    ? 'Select a vehicle first'
+                    : tripsLoading
+                      ? 'Loading trips…'
+                      : 'No trip (optional)'}
+                </option>
                 {tripsForExpenseVehicle.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.tripCode} — {t.source} → {t.destination} ({t.status})
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold">
+              {expenseForm.vehicleId &&
+              !tripsLoading &&
+              tripsForExpenseVehicle.length === 0 ? (
+                <span className="text-xs font-normal text-muted">
+                  No trips found for this vehicle.
+                </span>
+              ) : null}
+            </label>            <label className="flex flex-col gap-1 text-sm font-semibold">
               Type
               <select
                 className="rounded-lg border border-line px-3 py-2 font-normal"

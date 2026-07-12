@@ -108,9 +108,10 @@ async function assertAssignable(vehicleId, driverId, cargoWeightKg) {
 
 async function list(req, res, next) {
   try {
-    const { status, q, sortBy, sortOrder } = req.query;
+    const { status, q, vehicleId, sortBy, sortOrder } = req.query;
     const where = {};
     if (status) where.status = status;
+    if (vehicleId) where.vehicleId = vehicleId;
     if (q) {
       where.OR = [
         { tripCode: { contains: q, mode: "insensitive" } },
