@@ -3,7 +3,7 @@ const STATUS_CLASS = {
     AVAILABLE: 'status-badge status-success',
     ON_TRIP: 'status-badge status-info',
     IN_SHOP: 'status-badge status-warn',
-    RETIRED: 'status-badge status-neutral',
+    RETIRED: 'status-badge status-danger',
   },
   driver: {
     AVAILABLE: 'status-badge status-success',

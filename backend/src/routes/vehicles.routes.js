@@ -9,7 +9,7 @@ router.use(authenticate);
 
 router.get(
   "/",
-  authorize("FLEET_MANAGER", "DISPATCHER", "FINANCIAL_ANALYST"),
+  authorize("FLEET_MANAGER", "DISPATCHER", "FINANCIAL_ANALYST", "SAFETY_OFFICER"),
   vehiclesController.list
 );
 router.post("/", authorize("FLEET_MANAGER"), vehiclesController.create);
@@ -33,7 +33,7 @@ router.delete(
 
 router.get(
   "/:id",
-  authorize("FLEET_MANAGER", "DISPATCHER", "FINANCIAL_ANALYST"),
+  authorize("FLEET_MANAGER", "DISPATCHER", "FINANCIAL_ANALYST", "SAFETY_OFFICER"),
   vehiclesController.getById
 );
 router.put("/:id", authorize("FLEET_MANAGER"), vehiclesController.update);

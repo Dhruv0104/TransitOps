@@ -47,11 +47,25 @@ async function createFuel(req, res, next) {
 
 async function listExpenses(req, res, next) {
   try {
-    const { vehicleId } = req.query;
-    const where = vehicleId ? { vehicleId } : {};
+    const { vehicleId, tripId } = req.query;
+    const where = {};
+    if (vehicleId) where.vehicleId = vehicleId;
+    if (tripId) where.tripId = tripId;
+
     const expenses = await prisma.expense.findMany({
       where,
-      include: { vehicle: true },
+      include: {
+        vehicle: true,
+        trip: {
+          select: {
+            id: true,
+            tripCode: true,
+            source: true,
+            destination: true,
+            status: true,
+          },
+        },
+      },
       orderBy: { date: "desc" },
     });
     return res.json({ expenses });
@@ -62,7 +76,7 @@ async function listExpenses(req, res, next) {
 
 async function createExpense(req, res, next) {
   try {
-    const { vehicleId, type, amount, description, date } = req.body;
+    const { vehicleId, tripId, type, amount, description, date } = req.body;
     if (!vehicleId || !type || amount === undefined) {
       return res.status(400).json({
         message: "vehicleId, type, and amount are required",
@@ -74,15 +88,41 @@ async function createExpense(req, res, next) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
+    let resolvedTripId = null;
+    if (tripId) {
+      const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
+      if (trip.vehicleId !== vehicleId) {
+        return res.status(400).json({
+          message: "Selected trip does not belong to the selected vehicle",
+        });
+      }
+      resolvedTripId = trip.id;
+    }
+
     const expense = await prisma.expense.create({
       data: {
         vehicleId,
+        tripId: resolvedTripId,
         type: String(type).trim().toUpperCase(),
         amount: Number(amount),
         description: description?.trim() || null,
         date: date ? new Date(date) : new Date(),
       },
-      include: { vehicle: true },
+      include: {
+        vehicle: true,
+        trip: {
+          select: {
+            id: true,
+            tripCode: true,
+            source: true,
+            destination: true,
+            status: true,
+          },
+        },
+      },
     });
 
     return res.status(201).json({ expense });

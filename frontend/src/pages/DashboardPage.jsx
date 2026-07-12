@@ -8,7 +8,7 @@ const STATUS_BAR_COLORS = {
   AVAILABLE: 'bg-emerald-500',
   ON_TRIP: 'bg-sky-500',
   IN_SHOP: 'bg-amber-500',
-  RETIRED: 'bg-slate-400',
+  RETIRED: 'bg-red-500',
 }
 
 export default function DashboardPage() {

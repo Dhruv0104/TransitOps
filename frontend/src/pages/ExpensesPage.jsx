@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useOrg } from '../context/OrgContext'
@@ -12,6 +12,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([])
   const [costs, setCosts] = useState([])
   const [vehicles, setVehicles] = useState([])
+  const [trips, setTrips] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [fuelOpen, setFuelOpen] = useState(false)
@@ -24,6 +25,7 @@ export default function ExpensesPage() {
   })
   const [expenseForm, setExpenseForm] = useState({
     vehicleId: '',
+    tripId: '',
     type: 'TOLL',
     amount: '',
     description: '',
@@ -36,16 +38,19 @@ export default function ExpensesPage() {
     setLoading(true)
     setError('')
     try {
-      const [fuelData, expenseData, costData, vehicleData] = await Promise.all([
-        apiRequest('/fuel', { token }),
-        apiRequest('/expenses', { token }),
-        apiRequest('/expenses/operational-costs', { token }),
-        apiRequest('/vehicles', { token }),
-      ])
+      const [fuelData, expenseData, costData, vehicleData, tripData] =
+        await Promise.all([
+          apiRequest('/fuel', { token }),
+          apiRequest('/expenses', { token }),
+          apiRequest('/expenses/operational-costs', { token }),
+          apiRequest('/vehicles', { token }),
+          apiRequest('/trips', { token }),
+        ])
       setFuelLogs(fuelData.logs || [])
       setExpenses(expenseData.expenses || [])
       setCosts(costData.costs || [])
       setVehicles(vehicleData.vehicles || [])
+      setTrips(tripData.trips || [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -68,6 +73,18 @@ export default function ExpensesPage() {
   const filteredCosts = vehicleFilter
     ? costs.filter((c) => c.vehicleId === vehicleFilter)
     : costs
+
+  const tripsForExpenseVehicle = useMemo(() => {
+    if (!expenseForm.vehicleId) return []
+    return trips
+      .filter((t) => t.vehicleId === expenseForm.vehicleId)
+      .sort((a, b) => String(b.tripCode).localeCompare(String(a.tripCode)))
+  }, [trips, expenseForm.vehicleId])
+
+  function tripLabel(trip) {
+    if (!trip) return '—'
+    return `${trip.tripCode} · ${trip.source} → ${trip.destination}`
+  }
 
   async function submitFuel(e) {
     e.preventDefault()
@@ -131,6 +148,7 @@ export default function ExpensesPage() {
         token,
         body: {
           vehicleId: expenseForm.vehicleId,
+          tripId: expenseForm.tripId || undefined,
           type: expenseForm.type,
           amount: Number(expenseForm.amount),
           description: expenseForm.description || undefined,
@@ -138,6 +156,14 @@ export default function ExpensesPage() {
         },
       })
       setExpenseOpen(false)
+      setExpenseForm({
+        vehicleId: '',
+        tripId: '',
+        type: 'TOLL',
+        amount: '',
+        description: '',
+        date: '',
+      })
       await load()
     } catch (err) {
       setError(err.message)
@@ -150,7 +176,7 @@ export default function ExpensesPage() {
     <section>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Fuel & Expenses</h1>
+          <h1 className="text-2xl font-semibold text-ink">Fuel and Expenses</h1>
           <p className="mt-1 text-sm text-muted">
             Operational cost = Fuel + Maintenance per vehicle.
           </p>
@@ -165,7 +191,17 @@ export default function ExpensesPage() {
           </button>
           <button
             type="button"
-            onClick={() => setExpenseOpen(true)}
+            onClick={() => {
+              setExpenseForm({
+                vehicleId: '',
+                tripId: '',
+                type: 'TOLL',
+                amount: '',
+                description: '',
+                date: '',
+              })
+              setExpenseOpen(true)
+            }}
             className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold"
           >
             + Expense
@@ -211,7 +247,7 @@ export default function ExpensesPage() {
         <div className="mt-6 space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
             <TableSkeleton rows={5} cols={4} />
-            <TableSkeleton rows={5} cols={4} />
+            <TableSkeleton rows={5} cols={5} />
           </div>
           <TableSkeleton rows={5} cols={5} />
         </div>
@@ -252,6 +288,7 @@ export default function ExpensesPage() {
             <thead className="text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Trip</th>
                 <th className="px-4 py-2">Vehicle</th>
                 <th className="px-4 py-2">Type</th>
                 <th className="px-4 py-2">Amount ({currencySymbol})</th>
@@ -262,6 +299,15 @@ export default function ExpensesPage() {
                 <tr key={exp.id} className="border-t border-line/70">
                   <td className="px-4 py-2">
                     {new Date(exp.date).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-2">
+                    {exp.trip ? (
+                      <span title={tripLabel(exp.trip)}>
+                        {exp.trip.tripCode}
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-2">{exp.vehicle?.registrationNo}</td>
                   <td className="px-4 py-2">{exp.type}</td>
@@ -388,13 +434,35 @@ export default function ExpensesPage() {
                 className="rounded-lg border border-line px-3 py-2 font-normal"
                 value={expenseForm.vehicleId}
                 onChange={(e) =>
-                  setExpenseForm((f) => ({ ...f, vehicleId: e.target.value }))
+                  setExpenseForm((f) => ({
+                    ...f,
+                    vehicleId: e.target.value,
+                    tripId: '',
+                  }))
                 }
               >
                 <option value="">Select</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.registrationNo}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              Trip
+              <select
+                className="rounded-lg border border-line px-3 py-2 font-normal"
+                value={expenseForm.tripId}
+                disabled={!expenseForm.vehicleId}
+                onChange={(e) =>
+                  setExpenseForm((f) => ({ ...f, tripId: e.target.value }))
+                }
+              >
+                <option value="">No trip (optional)</option>
+                {tripsForExpenseVehicle.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.tripCode} — {t.source} → {t.destination} ({t.status})
                   </option>
                 ))}
               </select>
@@ -434,6 +502,17 @@ export default function ExpensesPage() {
                 value={expenseForm.description}
                 onChange={(e) =>
                   setExpenseForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              Date
+              <input
+                type="date"
+                className="rounded-lg border border-line px-3 py-2 font-normal"
+                value={expenseForm.date}
+                onChange={(e) =>
+                  setExpenseForm((f) => ({ ...f, date: e.target.value }))
                 }
               />
             </label>

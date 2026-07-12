@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useOrg } from '../context/OrgContext'
+import { canEditModule } from '../constants/roles'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { TableBodySkeleton } from '../components/Skeleton'
@@ -50,8 +51,9 @@ function formatTimestamp(value) {
 }
 
 export default function TripsPage() {
-  const { token } = useAuth()
-  const { currencySymbol } = useOrg()
+  const { token, user } = useAuth()
+  const { currencySymbol, rbac } = useOrg()
+  const canEditTrips = canEditModule(user?.role, 'trips', rbac)
   const [trips, setTrips] = useState([])
   const [vehicles, setVehicles] = useState([])
   const [drivers, setDrivers] = useState([])
@@ -216,6 +218,7 @@ export default function TripsPage() {
   }
 
   function openCreateTrip() {
+    if (!canEditTrips) return
     setEditingTrip(null)
     setForm(EMPTY_FORM)
     setRouteSource(null)
@@ -339,13 +342,19 @@ export default function TripsPage() {
             Draft → Dispatched → Completed / Cancelled with capacity and availability checks.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreateTrip}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
-        >
-          + Create Trip
-        </button>
+        {canEditTrips ? (
+          <button
+            type="button"
+            onClick={openCreateTrip}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
+          >
+            + Create Trip
+          </button>
+        ) : (
+          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-muted">
+            View only
+          </span>
+        )}
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
@@ -471,7 +480,7 @@ export default function TripsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        {trip.status === 'DRAFT' ? (
+                        {canEditTrips && trip.status === 'DRAFT' ? (
                           <>
                             <button
                               type="button"
@@ -489,7 +498,7 @@ export default function TripsPage() {
                             </button>
                           </>
                         ) : null}
-                        {trip.status === 'DISPATCHED' ? (
+                        {canEditTrips && trip.status === 'DISPATCHED' ? (
                           <button
                             type="button"
                             onClick={() => {
@@ -510,8 +519,9 @@ export default function TripsPage() {
                             Complete
                           </button>
                         ) : null}
-                        {trip.status === 'DRAFT' ||
-                        trip.status === 'DISPATCHED' ? (
+                        {canEditTrips &&
+                        (trip.status === 'DRAFT' ||
+                          trip.status === 'DISPATCHED') ? (
                           <button
                             type="button"
                             onClick={() => handleCancel(trip)}
@@ -519,6 +529,9 @@ export default function TripsPage() {
                           >
                             Cancel
                           </button>
+                        ) : null}
+                        {!canEditTrips ? (
+                          <span className="text-xs text-muted">View only</span>
                         ) : null}
                       </div>
                     </td>

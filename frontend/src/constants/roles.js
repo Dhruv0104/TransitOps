@@ -71,7 +71,7 @@ export const NAV_LINKS = [
   { to: '/drivers', label: 'Drivers & Safety' },
   { to: '/trips', label: 'Trip Dispatcher' },
   { to: '/maintenance', label: 'Maintenance' },
-  { to: '/expenses', label: 'Fuel & Energy' },
+  { to: '/expenses', label: 'Fuel and Expenses' },
   { to: '/reports', label: 'Analytics' },
   { to: '/users', label: 'Users & Access' },
   { to: '/settings', label: 'Settings' },
@@ -104,6 +104,10 @@ export function canAccessRoute(role, path, rbac = DEFAULT_RBAC) {
   const mod = moduleForPath(path)
   if (!mod) return false
   const level = accessFor(role, mod, rbac)
+
+  // Maintenance is fleet write-ops only — not shown for fleet "view" roles (e.g. Dispatcher)
+  if (path === '/maintenance') return level === 'full'
+
   return level === 'view' || level === 'full'
 }
 
