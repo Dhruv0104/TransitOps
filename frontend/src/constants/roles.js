@@ -6,17 +6,63 @@ export const ROLES = {
   FINANCIAL_ANALYST: 'FINANCIAL_ANALYST',
 }
 
-/** Path → roles allowed to access that page */
-export const ROUTE_PERMISSIONS = {
-  '/': Object.values(ROLES),
-  '/vehicles': [ROLES.ADMIN, ROLES.FLEET_MANAGER],
-  '/drivers': [ROLES.ADMIN, ROLES.SAFETY_OFFICER],
-  '/trips': [ROLES.ADMIN, ROLES.FLEET_MANAGER, ROLES.DISPATCHER],
-  '/maintenance': [ROLES.ADMIN, ROLES.FLEET_MANAGER],
-  '/expenses': [ROLES.ADMIN, ROLES.FINANCIAL_ANALYST, ROLES.FLEET_MANAGER],
-  '/reports': [ROLES.ADMIN, ROLES.FINANCIAL_ANALYST, ROLES.FLEET_MANAGER],
-  '/users': [ROLES.ADMIN],
-  '/settings': [ROLES.ADMIN],
+export const ACCESS_LEVELS = ['none', 'view', 'full']
+
+export const RBAC_MODULES = [
+  { key: 'fleet', label: 'Fleet' },
+  { key: 'drivers', label: 'Drivers' },
+  { key: 'trips', label: 'Trips' },
+  { key: 'fuel', label: 'Fuel/Exp.' },
+  { key: 'analytics', label: 'Analytics' },
+]
+
+/** Default matrix (no Super Admin) — matches Settings RBAC table */
+export const DEFAULT_RBAC = [
+  {
+    role: ROLES.FLEET_MANAGER,
+    label: 'Fleet Manager',
+    fleet: 'full',
+    drivers: 'full',
+    trips: 'none',
+    fuel: 'none',
+    analytics: 'full',
+  },
+  {
+    role: ROLES.DISPATCHER,
+    label: 'Dispatcher',
+    fleet: 'view',
+    drivers: 'none',
+    trips: 'full',
+    fuel: 'none',
+    analytics: 'none',
+  },
+  {
+    role: ROLES.SAFETY_OFFICER,
+    label: 'Safety Officer',
+    fleet: 'none',
+    drivers: 'full',
+    trips: 'view',
+    fuel: 'none',
+    analytics: 'none',
+  },
+  {
+    role: ROLES.FINANCIAL_ANALYST,
+    label: 'Financial Analyst',
+    fleet: 'view',
+    drivers: 'none',
+    trips: 'none',
+    fuel: 'full',
+    analytics: 'full',
+  },
+]
+
+/** Which routes belong to each RBAC module */
+export const MODULE_ROUTES = {
+  fleet: ['/vehicles', '/maintenance'],
+  drivers: ['/drivers'],
+  trips: ['/trips'],
+  fuel: ['/expenses'],
+  analytics: ['/reports'],
 }
 
 export const NAV_LINKS = [
@@ -31,13 +77,46 @@ export const NAV_LINKS = [
   { to: '/settings', label: 'Settings' },
 ]
 
-export function canAccessRoute(role, path) {
-  if (role === ROLES.ADMIN) return true
-  const allowed = ROUTE_PERMISSIONS[path]
-  if (!allowed) return false
-  return allowed.includes(role)
+export function cycleAccess(current) {
+  const idx = ACCESS_LEVELS.indexOf(current)
+  return ACCESS_LEVELS[(idx + 1) % ACCESS_LEVELS.length]
 }
 
-export function getNavLinksForRole(role) {
-  return NAV_LINKS.filter((link) => canAccessRoute(role, link.to))
+export function moduleForPath(path) {
+  for (const [mod, routes] of Object.entries(MODULE_ROUTES)) {
+    if (routes.includes(path)) return mod
+  }
+  return null
+}
+
+export function accessFor(role, moduleKey, rbac = DEFAULT_RBAC) {
+  if (role === ROLES.ADMIN) return 'full'
+  const row = (rbac || DEFAULT_RBAC).find((r) => r.role === role)
+  if (!row) return 'none'
+  return ACCESS_LEVELS.includes(row[moduleKey]) ? row[moduleKey] : 'none'
+}
+
+export function canAccessRoute(role, path, rbac = DEFAULT_RBAC) {
+  if (role === ROLES.ADMIN) return true
+  if (path === '/') return true
+  if (path === '/users' || path === '/settings') return false
+
+  const mod = moduleForPath(path)
+  if (!mod) return false
+  const level = accessFor(role, mod, rbac)
+  return level === 'view' || level === 'full'
+}
+
+export function canEditModule(role, moduleKey, rbac = DEFAULT_RBAC) {
+  return accessFor(role, moduleKey, rbac) === 'full'
+}
+
+export function getNavLinksForRole(role, rbac = DEFAULT_RBAC) {
+  return NAV_LINKS.filter((link) => canAccessRoute(role, link.to, rbac))
+}
+
+export function accessLabel(level) {
+  if (level === 'full') return '✓'
+  if (level === 'view') return 'view'
+  return '—'
 }

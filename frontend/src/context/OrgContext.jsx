@@ -9,6 +9,7 @@ import {
 import { apiRequest } from '../api/client'
 import { useAuth } from './AuthContext'
 import { currencySymbol, formatMoney as formatMoneyBase } from '../lib/currency'
+import { DEFAULT_RBAC } from '../constants/roles'
 
 const OrgContext = createContext(null)
 
@@ -16,12 +17,14 @@ export function OrgProvider({ children }) {
   const { token } = useAuth()
   const [currencyType, setCurrencyType] = useState('INR')
   const [distanceUnit, setDistanceUnit] = useState('km')
+  const [rbac, setRbac] = useState(DEFAULT_RBAC)
   const [ready, setReady] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!token) {
       setCurrencyType('INR')
       setDistanceUnit('km')
+      setRbac(DEFAULT_RBAC)
       setReady(true)
       return
     }
@@ -29,9 +32,11 @@ export function OrgProvider({ children }) {
       const data = await apiRequest('/settings/preferences', { token })
       setCurrencyType(data.currencyType || 'INR')
       setDistanceUnit(data.distanceUnit || 'km')
+      setRbac(Array.isArray(data.rbac) && data.rbac.length ? data.rbac : DEFAULT_RBAC)
     } catch {
       setCurrencyType('INR')
       setDistanceUnit('km')
+      setRbac(DEFAULT_RBAC)
     } finally {
       setReady(true)
     }
@@ -51,12 +56,13 @@ export function OrgProvider({ children }) {
     () => ({
       currencyType,
       distanceUnit,
+      rbac,
       currencySymbol: currencySymbol(currencyType),
       formatMoney,
       ready,
       refresh,
     }),
-    [currencyType, distanceUnit, formatMoney, ready, refresh]
+    [currencyType, distanceUnit, rbac, formatMoney, ready, refresh]
   )
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>

@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { DEFAULT_RBAC, normalizeRbac } = require("../lib/rbac");
 
 const DEFAULT_ORG = {
   name: "TransitOps Fleet Co.",
@@ -9,44 +10,6 @@ const DEFAULT_ORG = {
   distanceUnit: "km",
   currencyType: "INR",
 };
-
-const DEFAULT_RBAC = [
-  {
-    role: "ADMIN",
-    label: "Super Admin",
-    dashboardAccess: true,
-    editPermissions: true,
-    deletePermissions: true,
-  },
-  {
-    role: "FLEET_MANAGER",
-    label: "Fleet Manager",
-    dashboardAccess: true,
-    editPermissions: true,
-    deletePermissions: true,
-  },
-  {
-    role: "DISPATCHER",
-    label: "Dispatcher",
-    dashboardAccess: true,
-    editPermissions: true,
-    deletePermissions: false,
-  },
-  {
-    role: "SAFETY_OFFICER",
-    label: "Safety Officer",
-    dashboardAccess: true,
-    editPermissions: true,
-    deletePermissions: true,
-  },
-  {
-    role: "FINANCIAL_ANALYST",
-    label: "Financial Analyst",
-    dashboardAccess: true,
-    editPermissions: true,
-    deletePermissions: false,
-  },
-];
 
 async function getOrCreateOrg() {
   const existing = await prisma.organization.findFirst({
@@ -62,12 +25,37 @@ async function getOrCreateOrg() {
   });
 }
 
-async function getSettings(req, res, next) {
+async function getPreferences(req, res, next) {
   try {
     const organization = await getOrCreateOrg();
     return res.json({
+      currencyType: organization.currencyType || "INR",
+      distanceUnit: organization.distanceUnit || "km",
+      depotName: organization.depotName || null,
+      name: organization.name || null,
+      rbac: normalizeRbac(organization.rbacConfig),
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getSettings(req, res, next) {
+  try {
+    const organization = await getOrCreateOrg();
+    const rbac = normalizeRbac(organization.rbacConfig);
+
+    // Persist migration away from legacy dashboard/edit/delete matrix
+    if (JSON.stringify(organization.rbacConfig) !== JSON.stringify(rbac)) {
+      await prisma.organization.update({
+        where: { id: organization.id },
+        data: { rbacConfig: rbac },
+      });
+    }
+
+    return res.json({
       organization,
-      rbac: organization.rbacConfig || DEFAULT_RBAC,
+      rbac,
     });
   } catch (err) {
     return next(err);
@@ -120,28 +108,16 @@ async function updateRbac(req, res, next) {
       return res.status(400).json({ message: "rbac must be an array" });
     }
 
+    const normalized = normalizeRbac(rbac);
+
     const organization = await prisma.organization.update({
       where: { id: org.id },
-      data: { rbacConfig: rbac },
+      data: { rbacConfig: normalized },
     });
 
     return res.json({
       organization,
       rbac: organization.rbacConfig,
-    });
-  } catch (err) {
-    return next(err);
-  }
-}
-
-async function getPreferences(req, res, next) {
-  try {
-    const organization = await getOrCreateOrg();
-    return res.json({
-      currencyType: organization.currencyType || "INR",
-      distanceUnit: organization.distanceUnit || "km",
-      depotName: organization.depotName || null,
-      name: organization.name || null,
     });
   } catch (err) {
     return next(err);

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { OrgProvider } from './context/OrgContext'
+import { OrgProvider, useOrg } from './context/OrgContext'
 import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -29,7 +29,8 @@ function ProtectedRoute({ children }) {
 
 function RoleRoute({ path, children }) {
   const { user } = useAuth()
-  if (!canAccessRoute(user?.role, path)) {
+  const { rbac } = useOrg()
+  if (!canAccessRoute(user?.role, path, rbac)) {
     return <Navigate to="/" replace />
   }
   return children

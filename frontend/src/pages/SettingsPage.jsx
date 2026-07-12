@@ -8,6 +8,12 @@ import {
   firstError,
   required,
 } from '../lib/validation'
+import {
+  RBAC_MODULES,
+  accessLabel,
+  cycleAccess,
+  DEFAULT_RBAC,
+} from '../constants/roles'
 
 const DISTANCE_UNITS = ['km', 'mi']
 const CURRENCY_TYPES = ['INR', 'USD', 'EUR', 'GBP', 'AED']
@@ -49,7 +55,9 @@ export default function SettingsPage() {
         distanceUnit: o.distanceUnit || 'km',
         currencyType: o.currencyType || 'INR',
       })
-      setRbac(Array.isArray(data.rbac) ? data.rbac : [])
+      setRbac(
+        Array.isArray(data.rbac) && data.rbac.length ? data.rbac : DEFAULT_RBAC
+      )
     } catch (err) {
       setError(err.message)
     } finally {
@@ -92,6 +100,17 @@ export default function SettingsPage() {
     }
   }
 
+  function cycleRbacCell(role, moduleKey) {
+    setRbac((rows) =>
+      rows.map((row) =>
+        row.role === role
+          ? { ...row, [moduleKey]: cycleAccess(row[moduleKey] || 'none') }
+          : row
+      )
+    )
+    setRbacSaved(false)
+  }
+
   async function saveRbac() {
     setRbacSaving(true)
     setRbacSaved(false)
@@ -103,21 +122,13 @@ export default function SettingsPage() {
         body: { rbac },
       })
       setRbac(Array.isArray(data.rbac) ? data.rbac : rbac)
+      await refreshOrg()
       setRbacSaved(true)
     } catch (err) {
       setError(err.message)
     } finally {
       setRbacSaving(false)
     }
-  }
-
-  function toggleRbac(index, field) {
-    setRbac((rows) =>
-      rows.map((row, i) =>
-        i === index ? { ...row, [field]: !row[field] } : row
-      )
-    )
-    setRbacSaved(false)
   }
 
   if (loading) {
@@ -247,9 +258,11 @@ export default function SettingsPage() {
         <section className="rounded-xl border border-line bg-panel p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-ink">RBAC</h2>
+              <h2 className="text-lg font-semibold uppercase tracking-wide text-ink">
+                Role-Based Access (RBAC)
+              </h2>
               <p className="mt-1 text-sm text-muted">
-                Define dashboard, edit, and delete permissions by role.
+                Click a cell to cycle: full (✓) → view → none (—). Super Admin always has full access.
               </p>
             </div>
             <button
@@ -262,49 +275,60 @@ export default function SettingsPage() {
             </button>
           </div>
           {rbacSaved ? (
-            <p className="mt-2 text-sm text-emerald-400">RBAC matrix saved</p>
+            <p className="mt-2 text-sm text-emerald-500">RBAC matrix saved</p>
           ) : null}
 
-          <div className="mt-5 overflow-x-auto rounded-lg border border-line">
+          <div className="mt-5 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-line bg-surface text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="px-3 py-3 font-semibold">User Role</th>
-                  <th className="px-3 py-3 font-semibold">Dashboard Access</th>
-                  <th className="px-3 py-3 font-semibold">Edit Permissions</th>
-                  <th className="px-3 py-3 font-semibold">Delete Permissions</th>
+              <thead>
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  <th className="px-3 py-3 font-semibold">Role</th>
+                  {RBAC_MODULES.map((mod) => (
+                    <th
+                      key={mod.key}
+                      className="px-3 py-3 text-center font-semibold"
+                    >
+                      {mod.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {rbac.map((row, index) => (
-                  <tr
-                    key={row.role || index}
-                    className="border-b border-line/60 last:border-0"
-                  >
-                    <td className="px-3 py-3 font-medium text-ink">
-                      {row.label || String(row.role || '').replaceAll('_', ' ')}
-                    </td>
-                    {[
-                      'dashboardAccess',
-                      'editPermissions',
-                      'deletePermissions',
-                    ].map((field) => (
-                      <td key={field} className="px-3 py-3">
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-ink">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(row[field])}
-                            onChange={() => toggleRbac(index, field)}
-                            className="accent-orange-500"
-                          />
-                          <span className="text-xs font-semibold">
-                            {row[field] ? 'Yes' : 'No'}
-                          </span>
-                        </label>
+                {rbac
+                  .filter((row) => row.role !== 'ADMIN')
+                  .map((row) => (
+                    <tr
+                      key={row.role}
+                      className="border-b border-line/70 last:border-0"
+                    >
+                      <td className="px-3 py-3.5 font-medium text-ink">
+                        {row.label ||
+                          String(row.role || '').replaceAll('_', ' ')}
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                      {RBAC_MODULES.map((mod) => {
+                        const level = row[mod.key] || 'none'
+                        const label = accessLabel(level)
+                        const tone =
+                          level === 'full'
+                            ? 'text-emerald-500'
+                            : level === 'view'
+                              ? 'text-sky-500'
+                              : 'text-muted'
+                        return (
+                          <td key={mod.key} className="px-3 py-3.5 text-center">
+                            <button
+                              type="button"
+                              title={`Click to change (${level})`}
+                              onClick={() => cycleRbacCell(row.role, mod.key)}
+                              className={`min-w-[2.5rem] rounded-md px-2 py-1 text-sm font-semibold transition hover:bg-surface ${tone}`}
+                            >
+                              {label}
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
