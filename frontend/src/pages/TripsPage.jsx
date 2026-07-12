@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { TableBodySkeleton } from '../components/Skeleton'
@@ -20,6 +21,7 @@ const EMPTY_FORM = {
 
 export default function TripsPage() {
   const { token } = useAuth()
+  const { currencySymbol } = useOrg()
   const [trips, setTrips] = useState([])
   const [vehicles, setVehicles] = useState([])
   const [drivers, setDrivers] = useState([])
@@ -542,7 +544,7 @@ export default function TripsPage() {
               </span>
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold sm:col-span-2">
-              Revenue (optional)
+              Revenue ({currencySymbol}) (optional)
               <input
                 type="number"
                 min="0"
@@ -624,7 +626,7 @@ export default function TripsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
-              Revenue
+              Revenue ({currencySymbol})
               <input
                 type="number"
                 min="0"

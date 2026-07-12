@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import { KpiSkeleton, PanelSkeleton, TableSkeleton } from '../components/Skeleton'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
@@ -19,6 +20,7 @@ const PIE_COLORS = ['#f97316', '#38bdf8', '#34d399', '#a78bfa']
 
 export default function ReportsPage() {
   const { token } = useAuth()
+  const { formatMoney, currencySymbol } = useOrg()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -134,9 +136,9 @@ export default function ReportsPage() {
           />
           <Kpi
             label="Operational Cost"
-            value={summary.operationalCost.toFixed(2)}
+            value={formatMoney(summary.operationalCost)}
           />
-          <Kpi label="Total Revenue" value={summary.totalRevenue.toFixed(2)} />
+          <Kpi label="Total Revenue" value={formatMoney(summary.totalRevenue)} />
         </div>
       ) : null}
 
@@ -150,6 +152,7 @@ export default function ReportsPage() {
                 <XAxis dataKey="name" stroke="#8b98a8" tick={{ fontSize: 11 }} />
                 <YAxis stroke="#8b98a8" tick={{ fontSize: 11 }} />
                 <Tooltip
+                  formatter={(value) => formatMoney(value)}
                   contentStyle={{
                     background: '#1a222d',
                     border: '1px solid #2a3444',
@@ -184,6 +187,7 @@ export default function ReportsPage() {
                     ))}
                   </Pie>
                   <Tooltip
+                    formatter={(value) => formatMoney(value)}
                     contentStyle={{
                       background: '#1a222d',
                       border: '1px solid #2a3444',
@@ -208,8 +212,8 @@ export default function ReportsPage() {
               <th className="px-4 py-3">Vehicle</th>
               <th className="px-4 py-3">Distance</th>
               <th className="px-4 py-3">Fuel Eff.</th>
-              <th className="px-4 py-3">Ops Cost</th>
-              <th className="px-4 py-3">Revenue</th>
+              <th className="px-4 py-3">Ops Cost ({currencySymbol})</th>
+              <th className="px-4 py-3">Revenue ({currencySymbol})</th>
               <th className="px-4 py-3">ROI</th>
             </tr>
           </thead>
@@ -223,8 +227,8 @@ export default function ReportsPage() {
                 <td className="px-4 py-3">
                   {v.fuelEfficiency != null ? `${v.fuelEfficiency} km/L` : '—'}
                 </td>
-                <td className="px-4 py-3">{v.operationalCost.toFixed(2)}</td>
-                <td className="px-4 py-3">{v.revenue.toFixed(2)}</td>
+                <td className="px-4 py-3">{formatMoney(v.operationalCost)}</td>
+                <td className="px-4 py-3">{formatMoney(v.revenue)}</td>
                 <td className="px-4 py-3 text-accent">
                   {v.roi != null ? `${(v.roi * 100).toFixed(2)}%` : '—'}
                 </td>

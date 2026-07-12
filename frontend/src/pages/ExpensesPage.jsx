@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import Modal from '../components/Modal'
 import { TableSkeleton } from '../components/Skeleton'
 
 export default function ExpensesPage() {
   const { token } = useAuth()
+  const { formatMoney, currencySymbol } = useOrg()
   const [fuelLogs, setFuelLogs] = useState([])
   const [expenses, setExpenses] = useState([])
   const [costs, setCosts] = useState([])
@@ -174,7 +176,7 @@ export default function ExpensesPage() {
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className="text-xs uppercase text-muted">Total Fuel Cost</p>
-          <p className="mt-1 text-2xl font-semibold">{totalFuelCost.toFixed(2)}</p>
+          <p className="mt-1 text-2xl font-semibold">{formatMoney(totalFuelCost)}</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className="text-xs uppercase text-muted">Fuel Used (L)</p>
@@ -183,7 +185,7 @@ export default function ExpensesPage() {
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className="text-xs uppercase text-muted">Other Expenses</p>
           <p className="mt-1 text-2xl font-semibold">
-            {expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}
+            {formatMoney(expenses.reduce((s, e) => s + e.amount, 0))}
           </p>
         </div>
       </div>
@@ -224,7 +226,7 @@ export default function ExpensesPage() {
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2">Vehicle</th>
                 <th className="px-4 py-2">Liters</th>
-                <th className="px-4 py-2">Cost</th>
+                <th className="px-4 py-2">Cost ({currencySymbol})</th>
               </tr>
             </thead>
             <tbody>
@@ -235,7 +237,7 @@ export default function ExpensesPage() {
                   </td>
                   <td className="px-4 py-2">{log.vehicle?.registrationNo}</td>
                   <td className="px-4 py-2">{log.liters}</td>
-                  <td className="px-4 py-2">{log.cost}</td>
+                  <td className="px-4 py-2">{formatMoney(log.cost)}</td>
                 </tr>
               ))}
             </tbody>
@@ -252,7 +254,7 @@ export default function ExpensesPage() {
                 <th className="px-4 py-2">Date</th>
                 <th className="px-4 py-2">Vehicle</th>
                 <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2">Amount</th>
+                <th className="px-4 py-2">Amount ({currencySymbol})</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +265,7 @@ export default function ExpensesPage() {
                   </td>
                   <td className="px-4 py-2">{exp.vehicle?.registrationNo}</td>
                   <td className="px-4 py-2">{exp.type}</td>
-                  <td className="px-4 py-2">{exp.amount}</td>
+                  <td className="px-4 py-2">{formatMoney(exp.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -291,12 +293,12 @@ export default function ExpensesPage() {
                 <td className="px-4 py-2">
                   {c.registrationNo} — {c.name}
                 </td>
-                <td className="px-4 py-2">{c.fuelCost.toFixed(2)}</td>
-                <td className="px-4 py-2">{c.maintenanceCost.toFixed(2)}</td>
+                <td className="px-4 py-2">{formatMoney(c.fuelCost)}</td>
+                <td className="px-4 py-2">{formatMoney(c.maintenanceCost)}</td>
                 <td className="px-4 py-2 font-semibold">
-                  {c.operationalCost.toFixed(2)}
+                  {formatMoney(c.operationalCost)}
                 </td>
-                <td className="px-4 py-2">{c.otherExpenseCost.toFixed(2)}</td>
+                <td className="px-4 py-2">{formatMoney(c.otherExpenseCost)}</td>
               </tr>
             ))}
           </tbody>
@@ -341,7 +343,7 @@ export default function ExpensesPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
-              Cost
+              Cost ({currencySymbol})
               <input
                 required
                 type="number"
@@ -412,7 +414,7 @@ export default function ExpensesPage() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
-              Amount
+              Amount ({currencySymbol})
               <input
                 required
                 type="number"

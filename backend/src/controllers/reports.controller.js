@@ -189,6 +189,22 @@ async function exportPdf(_req, res, next) {
         ? Math.round((totals.distance / totals.fuelLiters) * 100) / 100
         : null;
 
+    const org = await prisma.organization.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+    const currencyType = org?.currencyType || "INR";
+    // PDF built-in fonts lack ₹ glyph — use Rs. for INR
+    const currencyPrefix =
+      currencyType === "INR"
+        ? "Rs. "
+        : currencyType === "USD"
+          ? "$"
+          : currencyType === "EUR"
+            ? "EUR "
+            : currencyType === "GBP"
+              ? "GBP "
+              : `${currencyType} `;
+
     const doc = new PDFDocument({
       margin: 40,
       size: "A4",
@@ -211,11 +227,16 @@ async function exportPdf(_req, res, next) {
     const contentWidth = pageWidth - margin * 2;
     const bottomLimit = pageHeight - 55;
 
-    const money = (n) =>
-      `INR ${Number(n || 0).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
+    const money = (n) => {
+      const formatted = Number(n || 0).toLocaleString(
+        currencyType === "INR" ? "en-IN" : "en-US",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      );
+      return `${currencyPrefix}${formatted}`;
+    };
     const num = (n, digits = 1) =>
       Number(n || 0).toLocaleString("en-IN", {
         minimumFractionDigits: digits,
@@ -588,7 +609,7 @@ async function exportPdf(_req, res, next) {
       .font("Helvetica")
       .fontSize(8)
       .text(
-        "Notes: ROI = (Revenue − Operational Cost) / Acquisition Cost. Operational cost includes fuel and maintenance only. All amounts in INR.",
+        `Notes: ROI = (Revenue − Operational Cost) / Acquisition Cost. Operational cost includes fuel and maintenance only. All amounts in ${currencyType}.`,
         margin,
         doc.y + 12,
         { width: contentWidth }

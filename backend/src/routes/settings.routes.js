@@ -5,8 +5,11 @@ const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 
 router.use(authenticate);
-router.use(authorize("ADMIN"));
 
+// Available to all authenticated roles (currency / units for UI)
+router.get("/preferences", settingsController.getPreferences);
+
+router.use(authorize("ADMIN"));
 router.get("/", settingsController.getSettings);
 router.put("/organization", settingsController.updateOrganization);
 router.put("/rbac", settingsController.updateRbac);

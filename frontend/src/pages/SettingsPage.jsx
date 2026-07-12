@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import { FormPageSkeleton } from '../components/Skeleton'
 import {
   email as validateEmail,
@@ -23,6 +24,7 @@ const EMPTY_ORG = {
 
 export default function SettingsPage() {
   const { token } = useAuth()
+  const { refresh: refreshOrg } = useOrg()
   const [org, setOrg] = useState(EMPTY_ORG)
   const [rbac, setRbac] = useState([])
   const [loading, setLoading] = useState(true)
@@ -81,6 +83,7 @@ export default function SettingsPage() {
         token,
         body: org,
       })
+      await refreshOrg()
       setOrgSaved(true)
     } catch (err) {
       setError(err.message)

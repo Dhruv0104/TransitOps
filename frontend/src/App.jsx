@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { OrgProvider } from './context/OrgContext'
 import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -37,6 +38,7 @@ function RoleRoute({ path, children }) {
 function App() {
   return (
     <AuthProvider>
+      <OrgProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -124,6 +126,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </OrgProvider>
     </AuthProvider>
   )
 }

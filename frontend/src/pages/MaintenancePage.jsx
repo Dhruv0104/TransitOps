@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ListSkeleton, TableBodySkeleton } from '../components/Skeleton'
 
 export default function MaintenancePage() {
   const { token } = useAuth()
+  const { formatMoney, currencySymbol } = useOrg()
   const [logs, setLogs] = useState([])
   const [vehicles, setVehicles] = useState([])
   const [error, setError] = useState('')
@@ -163,7 +165,7 @@ export default function MaintenancePage() {
                       <p className="font-medium">
                         {log.vehicle?.registrationNo} — {log.description}
                       </p>
-                      <p className="text-xs text-muted">Cost: {log.cost}</p>
+                      <p className="text-xs text-muted">Cost: {formatMoney(log.cost)}</p>
                     </div>
                     <button
                       type="button"
@@ -184,7 +186,7 @@ export default function MaintenancePage() {
               <tr>
                 <th className="px-4 py-3">Vehicle</th>
                 <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Cost</th>
+                <th className="px-4 py-3">Cost ({currencySymbol})</th>
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
@@ -196,7 +198,7 @@ export default function MaintenancePage() {
                   <tr key={log.id} className="border-b border-line/70 last:border-0">
                     <td className="px-4 py-3">{log.vehicle?.registrationNo}</td>
                     <td className="px-4 py-3">{log.description}</td>
-                    <td className="px-4 py-3">{log.cost}</td>
+                    <td className="px-4 py-3">{formatMoney(log.cost)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge value={log.isActive ? 'IN_SHOP' : 'AVAILABLE'} />
                     </td>
@@ -242,7 +244,7 @@ export default function MaintenancePage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
-              Cost
+              Cost ({currencySymbol})
               <input
                 type="number"
                 min="0"

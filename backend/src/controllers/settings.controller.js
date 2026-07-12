@@ -134,8 +134,23 @@ async function updateRbac(req, res, next) {
   }
 }
 
+async function getPreferences(req, res, next) {
+  try {
+    const organization = await getOrCreateOrg();
+    return res.json({
+      currencyType: organization.currencyType || "INR",
+      distanceUnit: organization.distanceUnit || "km",
+      depotName: organization.depotName || null,
+      name: organization.name || null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getSettings,
+  getPreferences,
   updateOrganization,
   updateRbac,
   DEFAULT_RBAC,

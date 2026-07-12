@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiRequest, apiUpload, API_BASE } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOrg } from '../context/OrgContext'
 import Modal from '../components/Modal'
 import LocationPicker from '../components/LocationPicker'
 import { StatusBadge } from '../components/StatusBadge'
@@ -28,6 +29,7 @@ const DOC_TYPES = ['RC', 'INSURANCE', 'PERMIT', 'PUC', 'FITNESS', 'OTHER']
 
 export default function VehiclesPage() {
   const { token } = useAuth()
+  const { currencySymbol } = useOrg()
   const [vehicles, setVehicles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -460,7 +462,7 @@ export default function VehiclesPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
-              Acquisition Cost
+              Acquisition Cost ({currencySymbol})
               <input
                 required
                 type="number"
