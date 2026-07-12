@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useAuth } from '../context/AuthContext'
+import { KpiSkeleton, PanelSkeleton, TableSkeleton } from '../components/Skeleton'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const PIE_COLORS = ['#f97316', '#38bdf8', '#34d399', '#a78bfa']
@@ -108,8 +109,18 @@ export default function ReportsPage() {
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="mt-4 text-sm text-muted">Loading analytics…</p> : null}
 
+      {loading ? (
+        <div className="mt-5 space-y-6">
+          <KpiSkeleton count={4} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PanelSkeleton />
+            <PanelSkeleton />
+          </div>
+          <TableSkeleton rows={6} cols={6} />
+        </div>
+      ) : (
+        <>
       {summary ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Kpi label="Fleet Utilization" value={`${summary.fleetUtilization}%`} />
@@ -222,6 +233,8 @@ export default function ReportsPage() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </section>
   )
 }

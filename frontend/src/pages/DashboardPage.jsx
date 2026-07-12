@@ -11,6 +11,7 @@ import {
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { StatusBadge } from '../components/StatusBadge'
+import { KpiSkeleton, PanelSkeleton, TableSkeleton } from '../components/Skeleton'
 
 export default function DashboardPage() {
   const { token } = useAuth()
@@ -100,8 +101,20 @@ export default function DashboardPage() {
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-      {loading ? <p className="mt-4 text-sm text-muted">Loading KPIs…</p> : null}
 
+      {loading ? (
+        <div className="mt-5 space-y-6">
+          <KpiSkeleton count={7} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PanelSkeleton />
+            <TableSkeleton rows={5} cols={3} />
+          </div>
+          <TableSkeleton rows={5} cols={7} />
+        </div>
+      ) : null}
+
+      {!loading ? (
+      <>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <div
@@ -228,6 +241,8 @@ export default function DashboardPage() {
           </tbody>
         </table>
       </div>
+      </>
+      ) : null}
     </section>
   )
 }

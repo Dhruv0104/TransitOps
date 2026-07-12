@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import { TableSkeleton } from '../components/Skeleton'
 
 export default function ExpensesPage() {
   const { token } = useAuth()
@@ -204,8 +205,16 @@ export default function ExpensesPage() {
         </select>
       </div>
 
-      {loading ? <p className="mt-4 text-sm text-muted">Loading…</p> : null}
-
+      {loading ? (
+        <div className="mt-6 space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TableSkeleton rows={5} cols={4} />
+            <TableSkeleton rows={5} cols={4} />
+          </div>
+          <TableSkeleton rows={5} cols={5} />
+        </div>
+      ) : (
+        <>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="overflow-x-auto rounded-xl border border-line bg-surface">
           <h2 className="border-b border-line px-4 py-3 font-semibold">Fuel Logs</h2>
@@ -293,6 +302,8 @@ export default function ExpensesPage() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
 
       {fuelOpen ? (
         <Modal title="Add Fuel Log" onClose={() => setFuelOpen(false)}>

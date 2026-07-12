@@ -3,6 +3,7 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
+import { ListSkeleton, TableBodySkeleton } from '../components/Skeleton'
 
 export default function MaintenancePage() {
   const { token } = useAuth()
@@ -147,7 +148,7 @@ export default function MaintenancePage() {
           <h2 className="font-semibold">Active / Upcoming</h2>
           <div className="mt-3 space-y-2">
             {loading ? (
-              <p className="text-sm text-muted">Loading…</p>
+              <ListSkeleton count={3} />
             ) : logs.filter((l) => l.isActive).length === 0 ? (
               <p className="text-sm text-muted">No active maintenance.</p>
             ) : (
@@ -188,16 +189,20 @@ export default function MaintenancePage() {
               </tr>
             </thead>
             <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} className="border-b border-line/70 last:border-0">
-                  <td className="px-4 py-3">{log.vehicle?.registrationNo}</td>
-                  <td className="px-4 py-3">{log.description}</td>
-                  <td className="px-4 py-3">{log.cost}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge value={log.isActive ? 'IN_SHOP' : 'AVAILABLE'} />
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <TableBodySkeleton rows={5} cols={4} />
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id} className="border-b border-line/70 last:border-0">
+                    <td className="px-4 py-3">{log.vehicle?.registrationNo}</td>
+                    <td className="px-4 py-3">{log.description}</td>
+                    <td className="px-4 py-3">{log.cost}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge value={log.isActive ? 'IN_SHOP' : 'AVAILABLE'} />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

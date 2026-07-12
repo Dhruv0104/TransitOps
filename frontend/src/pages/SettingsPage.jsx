@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { FormPageSkeleton } from '../components/Skeleton'
 import {
   email as validateEmail,
   firstError,
@@ -117,7 +118,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading settings…</p>
+    return <FormPageSkeleton />
   }
 
   return (

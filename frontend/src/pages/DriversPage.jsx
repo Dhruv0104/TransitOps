@@ -3,6 +3,7 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
+import { TableBodySkeleton } from '../components/Skeleton'
 import {
   dateRequired,
   email as validateEmail,
@@ -311,11 +312,7 @@ export default function DriversPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted">
-                  Loading drivers…
-                </td>
-              </tr>
+              <TableBodySkeleton rows={6} cols={9} />
             ) : drivers.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-8 text-center text-muted">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import { TableBodySkeleton } from '../components/Skeleton'
 import { ROLES } from '../constants/roles'
 import {
   email as validateEmail,
@@ -244,11 +245,7 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted">
-                  Loading users…
-                </td>
-              </tr>
+              <TableBodySkeleton rows={5} cols={5} />
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-muted">

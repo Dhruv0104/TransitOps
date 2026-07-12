@@ -3,6 +3,7 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
+import { TableBodySkeleton } from '../components/Skeleton'
 import TripRouteMap, { resolvePlaceLabel } from '../components/TripRouteMap'
 
 const STEPS = ['DRAFT', 'DISPATCHED', 'COMPLETED']
@@ -353,11 +354,7 @@ export default function TripsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                  Loading trips…
-                </td>
-              </tr>
+              <TableBodySkeleton rows={6} cols={7} />
             ) : trips.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted">

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import LocationPicker from '../components/LocationPicker'
 import { StatusBadge } from '../components/StatusBadge'
+import { TableBodySkeleton } from '../components/Skeleton'
 import {
   firstError,
   nonNegativeNumber,
@@ -344,11 +345,7 @@ export default function VehiclesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
-                  Loading vehicles…
-                </td>
-              </tr>
+              <TableBodySkeleton rows={6} cols={8} />
             ) : vehicles.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted">
@@ -607,11 +604,7 @@ export default function VehiclesPage() {
               </thead>
               <tbody>
                 {docsLoading ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-muted">
-                      Loading…
-                    </td>
-                  </tr>
+                  <TableBodySkeleton rows={3} cols={4} />
                 ) : documents.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-3 py-4 text-muted">
