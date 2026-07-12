@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import {
+  email as validateEmail,
+  firstError,
+  required,
+} from '../lib/validation'
 
 const DISTANCE_UNITS = ['km', 'mi']
 const CURRENCY_TYPES = ['INR', 'USD', 'EUR', 'GBP', 'AED']
@@ -55,6 +60,17 @@ export default function SettingsPage() {
 
   async function saveOrganization(e) {
     e.preventDefault()
+    const validationError = firstError(
+      required(org.name, 'Organization name'),
+      org.email ? validateEmail(org.email, 'Email') : '',
+      required(org.distanceUnit, 'Distance unit'),
+      required(org.currencyType, 'Currency type')
+    )
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setOrgSaving(true)
     setOrgSaved(false)
     setError('')
@@ -133,7 +149,7 @@ export default function SettingsPage() {
                 required
                 value={org.name}
                 onChange={(e) => setOrg((o) => ({ ...o, name: e.target.value }))}
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
@@ -144,7 +160,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setOrg((o) => ({ ...o, address: e.target.value }))
                 }
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
@@ -154,7 +170,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setOrg((o) => ({ ...o, contactNo: e.target.value }))
                 }
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
@@ -163,7 +179,7 @@ export default function SettingsPage() {
                 type="email"
                 value={org.email}
                 onChange={(e) => setOrg((o) => ({ ...o, email: e.target.value }))}
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
@@ -173,7 +189,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setOrg((o) => ({ ...o, depotName: e.target.value }))
                 }
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
@@ -183,7 +199,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setOrg((o) => ({ ...o, distanceUnit: e.target.value }))
                 }
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               >
                 {DISTANCE_UNITS.map((opt) => (
                   <option key={opt} value={opt}>
@@ -199,7 +215,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setOrg((o) => ({ ...o, currencyType: e.target.value }))
                 }
-                className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal outline-none focus:border-accent"
+                className="field"
               >
                 {CURRENCY_TYPES.map((opt) => (
                   <option key={opt} value={opt}>

@@ -2,51 +2,54 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from '../components/ThemeToggle'
+import {
+  email as validateEmail,
+  firstError,
+  password as validatePassword,
+  required,
+} from '../lib/validation'
 
-const FEATURES = [
+const HIGHLIGHTS = [
   {
-    title: 'Fleet Management',
-    desc: 'Track vehicles, status, and utilization in one place.',
+    title: 'Unified fleet control',
+    desc: 'Register vehicles, track status, and keep utilization visible in one console.',
   },
   {
-    title: 'Compliance',
-    desc: 'Monitor license validity and safety scores.',
+    title: 'Safer driver operations',
+    desc: 'License expiry checks, safety scores, and duty status before every dispatch.',
   },
   {
-    title: 'Dispatch & Trips',
-    desc: 'Assign vehicles and drivers with capacity checks.',
+    title: 'Smarter trip dispatch',
+    desc: 'Map-based routes with cargo capacity validation from draft to completion.',
   },
   {
-    title: 'Financial Reports',
-    desc: 'Fuel, maintenance cost, ROI, and CSV exports.',
+    title: 'Cost & performance insight',
+    desc: 'Fuel, maintenance, ROI charts, plus CSV and PDF exports for reviews.',
   },
 ]
 
 const ROLE_OPTIONS = [
-  {
-    value: 'ADMIN',
-    label: 'Admin',
-    email: 'admin@transitops.local',
-  },
+  { value: 'ADMIN', label: 'Admin', email: 'dvpatel6048@gmail.com' },
   {
     value: 'FLEET_MANAGER',
     label: 'Fleet Manager',
-    email: 'fleet@transitops.local',
+    email: 'patelromil.surajnagar@gmail.com',
   },
   {
     value: 'DISPATCHER',
     label: 'Dispatcher',
-    email: 'dispatcher@transitops.local',
+    email: 'nazneenpatel189@gmail.com',
   },
   {
     value: 'SAFETY_OFFICER',
     label: 'Safety Officer',
-    email: 'safety@transitops.local',
+    email: 'nehapatel200512@gmail.com',
   },
   {
     value: 'FINANCIAL_ANALYST',
     label: 'Financial Analyst',
-    email: 'finance@transitops.local',
+    email: 'echoflex2024@gmail.com',
   },
 ]
 
@@ -54,7 +57,7 @@ export default function LoginPage() {
   const { token, login, ready } = useAuth()
   const navigate = useNavigate()
   const [role, setRole] = useState('ADMIN')
-  const [email, setEmail] = useState('admin@transitops.local')
+  const [email, setEmail] = useState('dvpatel6048@gmail.com')
   const [password, setPassword] = useState('password123')
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
@@ -82,12 +85,22 @@ export default function LoginPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    const validationError = firstError(
+      required(role, 'Role'),
+      validateEmail(email),
+      validatePassword(password, 'Password', { min: 6 })
+    )
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setError('')
     setLoading(true)
     try {
       const data = await apiRequest('/auth/login', {
         method: 'POST',
-        body: { email, password },
+        body: { email: email.trim(), password },
       })
 
       if (data.user?.role !== role) {
@@ -108,12 +121,12 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <section className="relative flex flex-col justify-between bg-[#e8eaed] px-8 py-10 text-slate-800 lg:px-14 lg:py-14">
+      <section className="relative flex flex-col justify-between overflow-hidden bg-sidebar px-8 py-10 text-ink lg:px-14 lg:py-14">
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
+          className="pointer-events-none absolute inset-0 opacity-80"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 20% 20%, #fff 0, transparent 40%), radial-gradient(circle at 80% 80%, #cbd5e1 0, transparent 35%)',
+              'radial-gradient(ellipse at 15% 10%, rgba(249,115,22,0.22), transparent 42%), radial-gradient(ellipse at 90% 85%, rgba(56,189,248,0.12), transparent 40%)',
           }}
         />
         <div className="relative">
@@ -122,47 +135,59 @@ export default function LoginPage() {
               TO
             </span>
             <div>
-              <p className="text-xl font-bold tracking-tight text-slate-900">
-                TransitOps
-              </p>
-              <p className="text-sm text-slate-500">Smart Transport Operations</p>
+              <p className="text-xl font-bold tracking-tight">TransitOps</p>
+              <p className="text-sm text-muted">Smart Transport Operations</p>
             </div>
           </div>
 
-          <h2 className="mt-12 text-3xl font-semibold tracking-tight text-slate-900">
-            Key App Features
+          <p className="mt-12 text-xs font-bold uppercase tracking-[0.18em] text-accent">
+            Built for fleet teams
+          </p>
+          <h2 className="mt-3 max-w-md text-3xl font-semibold tracking-tight lg:text-4xl">
+            Run vehicles, drivers, and dispatch from one operations console.
           </h2>
-          <ul className="mt-8 space-y-5">
-            {FEATURES.map((f) => (
-              <li key={f.title} className="flex gap-3">
-                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">
+            TransitOps helps you digitize day-to-day fleet work — from registry and
+            compliance to trips, maintenance, fuel costs, and analytics.
+          </p>
+
+          <ul className="mt-10 space-y-5">
+            {HIGHLIGHTS.map((item, index) => (
+              <li key={item.title} className="flex gap-3">
+                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/20 text-xs font-bold text-accent">
+                  {index + 1}
+                </span>
                 <div>
-                  <p className="font-semibold text-slate-900">{f.title}</p>
-                  <p className="text-sm text-slate-600">{f.desc}</p>
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="mt-0.5 text-sm text-muted">{item.desc}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
-        <p className="relative text-xs text-slate-500">
-          Digitizing fleet, dispatch, maintenance & cost control.
+        <p className="relative text-xs text-muted">
+          Demo access ready — choose a role on the right to auto-fill credentials.
         </p>
       </section>
 
-      <section className="flex items-center justify-center bg-canvas px-6 py-12 lg:px-14">
-        <form onSubmit={handleSubmit} className="w-full max-w-md">
+      <section className="relative flex items-center justify-center bg-canvas px-6 py-12 lg:px-14">
+        <div className="absolute right-6 top-6">
+          <ThemeToggle />
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-xl shadow-black/10 sm:p-8"
+        >
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
             Welcome back
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-ink">
-            Sign in to your account
-          </h1>
+          <h1 className="mt-2 text-3xl font-semibold text-ink">Sign in</h1>
           <p className="mt-2 text-sm text-muted">
-            Select your role, then sign in with your credentials.
+            Choose your role to load the demo account, then sign in.
           </p>
 
           {error ? (
-            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-danger">
+            <p className="mt-4 rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           ) : null}
@@ -172,7 +197,7 @@ export default function LoginPage() {
             <select
               value={role}
               onChange={(e) => handleRoleChange(e.target.value)}
-              className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+              className="field"
             >
               {ROLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -182,23 +207,6 @@ export default function LoginPage() {
             </select>
           </label>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {ROLE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => handleRoleChange(opt.value)}
-                className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-colors ${
-                  role === opt.value
-                    ? 'border-accent bg-accent/20 text-accent'
-                    : 'border-line bg-surface text-muted hover:border-accent/40 hover:text-ink'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
           <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
             Email
             <input
@@ -206,7 +214,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+              className="field"
             />
           </label>
 
@@ -217,7 +225,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-lg border border-line bg-surface px-3 py-2.5 font-normal text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+              className="field"
             />
           </label>
 
@@ -240,8 +248,8 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-4 text-xs text-muted">
-            Choosing a role fills the demo account. Password for all:{' '}
-            <span className="text-ink">password123</span>
+            Demo password for all roles:{' '}
+            <span className="font-semibold text-ink">password123</span>
           </p>
         </form>
       </section>

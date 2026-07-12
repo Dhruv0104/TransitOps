@@ -1,13 +1,14 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getNavLinksForRole } from '../constants/roles'
+import ThemeToggle from './ThemeToggle'
 
 const navClass = ({ isActive }) =>
   [
     'rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
     isActive
       ? 'bg-accent/20 text-accent'
-      : 'text-slate-400 hover:bg-white/5 hover:text-white',
+      : 'text-muted hover:bg-accent/10 hover:text-ink',
   ].join(' ')
 
 export default function AppLayout() {
@@ -30,14 +31,14 @@ export default function AppLayout() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[250px_1fr]">
-      <aside className="sticky top-0 z-10 flex flex-col gap-6 border-r border-line bg-sidebar px-4 py-6 text-slate-100 lg:min-h-screen">
+      <aside className="sticky top-0 z-10 flex flex-col gap-6 border-r border-line bg-sidebar px-4 py-6 text-ink lg:min-h-screen">
         <div className="flex items-center gap-3 px-2">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-sm font-bold text-white shadow-md shadow-orange-500/30">
             TO
           </span>
           <div>
             <p className="font-semibold leading-tight">TransitOps</p>
-            <p className="text-xs text-slate-500">Operations Console</p>
+            <p className="text-xs text-muted">Operations Console</p>
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto lg:flex-col">
@@ -55,7 +56,8 @@ export default function AppLayout() {
             <p className="text-xs text-muted">Signed in as</p>
             <p className="font-semibold text-ink">{user?.name || 'User'}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <ThemeToggle />
             <span className="rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
               {user?.role?.replaceAll('_', ' ')}
             </span>

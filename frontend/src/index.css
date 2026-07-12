@@ -2,17 +2,48 @@
 @import "leaflet/dist/leaflet.css";
 
 @theme {
-  --color-ink: #e8eef4;
-  --color-muted: #8b98a8;
-  --color-line: #2a3444;
-  --color-surface: #1a222d;
-  --color-canvas: #0f1419;
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
   --color-accent: #f97316;
-  --color-accent-soft: #3a2416;
-  --color-sidebar: #0b1016;
+  --color-accent-soft: var(--accent-soft);
+  --color-sidebar: var(--sidebar);
   --color-danger: #f87171;
-  --color-panel: #151c26;
+  --color-panel: var(--panel);
   --font-sans: "Segoe UI", "Trebuchet MS", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root,
+[data-theme="dark"] {
+  --ink: #e8eef4;
+  --muted: #8b98a8;
+  --line: #2a3444;
+  --surface: #1a222d;
+  --canvas: #0f1419;
+  --accent-soft: #3a2416;
+  --sidebar: #0b1016;
+  --panel: #151c26;
+  --body-bg:
+    radial-gradient(ellipse at top right, rgba(249, 115, 22, 0.08), transparent 40%),
+    linear-gradient(180deg, #121820 0%, #0f1419 50%, #0c1016 100%);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #dbe3ee;
+  --surface: #ffffff;
+  --canvas: #f4f7fb;
+  --accent-soft: #fff1e7;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --body-bg:
+    radial-gradient(ellipse at top right, rgba(249, 115, 22, 0.12), transparent 42%),
+    linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
+  color-scheme: light;
 }
 
 html,
@@ -24,21 +55,51 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  color: var(--color-ink);
-  background:
-    radial-gradient(ellipse at top right, rgba(249, 115, 22, 0.08), transparent 40%),
-    linear-gradient(180deg, #121820 0%, var(--color-canvas) 50%, #0c1016 100%);
+  color: var(--ink);
+  background: var(--body-bg);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Form controls in dark UI */
+/* Form controls — fix unreadable native dropdowns in dark/light */
 input,
 select,
-textarea {
-  color-scheme: dark;
+textarea,
+.field {
+  background-color: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+  color-scheme: inherit;
+}
+
+select {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+select option,
+select optgroup {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.5rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  outline: none;
+}
+
+.field:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25);
 }
 
 .leaflet-container {
-  background: #1a222d;
+  background: var(--surface);
   font: inherit;
+  z-index: 0;
 }
