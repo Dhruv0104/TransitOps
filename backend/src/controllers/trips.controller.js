@@ -37,6 +37,21 @@ function tripInclude() {
   };
 }
 
+/** Estimate return ETA from planned distance (avg ~40 km/h). */
+function estimateEtaMinutes(plannedDistance) {
+  const distance = Number(plannedDistance);
+  if (!Number.isFinite(distance) || distance <= 0) return 60;
+  return Math.max(15, Math.round((distance / 40) * 60));
+}
+
+function resolveEtaMinutes(raw, plannedDistance) {
+  if (raw !== undefined && raw !== null && raw !== "") {
+    const n = Number(raw);
+    if (!Number.isNaN(n) && n > 0) return Math.round(n);
+  }
+  return estimateEtaMinutes(plannedDistance);
+}
+
 async function assertAssignable(vehicleId, driverId, cargoWeightKg) {
   const [vehicle, driver] = await Promise.all([
     prisma.vehicle.findUnique({ where: { id: vehicleId } }),
@@ -142,6 +157,7 @@ async function create(req, res, next) {
       cargoWeightKg,
       plannedDistance,
       revenue,
+      etaMinutes,
     } = req.body;
 
     if (
@@ -168,6 +184,7 @@ async function create(req, res, next) {
     }
 
     const tripCode = await nextTripCode();
+    const eta = resolveEtaMinutes(etaMinutes, plannedDistance);
 
     const trip = await prisma.trip.create({
       data: {
@@ -178,6 +195,7 @@ async function create(req, res, next) {
         driverId,
         cargoWeightKg: Number(cargoWeightKg),
         plannedDistance: Number(plannedDistance),
+        etaMinutes: eta,
         revenue:
           revenue === undefined || revenue === "" ? null : Number(revenue),
         status: "DRAFT",
@@ -213,6 +231,7 @@ async function update(req, res, next) {
       cargoWeightKg,
       plannedDistance,
       revenue,
+      etaMinutes,
     } = req.body;
 
     if (
@@ -247,6 +266,7 @@ async function update(req, res, next) {
         driverId,
         cargoWeightKg: Number(cargoWeightKg),
         plannedDistance: Number(plannedDistance),
+        etaMinutes: resolveEtaMinutes(etaMinutes, plannedDistance),
         revenue:
           revenue === undefined || revenue === "" ? null : Number(revenue),
       },
@@ -279,10 +299,16 @@ async function dispatch(req, res, next) {
       return res.status(check.status).json({ message: check.error });
     }
 
+    const now = new Date();
     const updated = await prisma.$transaction(async (tx) => {
       const next = await tx.trip.update({
         where: { id: trip.id },
-        data: { status: "DISPATCHED" },
+        data: {
+          status: "DISPATCHED",
+          dispatchedAt: now,
+          etaMinutes:
+            trip.etaMinutes || estimateEtaMinutes(trip.plannedDistance),
+        },
         include: tripInclude(),
       });
       await tx.vehicle.update({
@@ -344,6 +370,7 @@ async function complete(req, res, next) {
         where: { id: trip.id },
         data: {
           status: "COMPLETED",
+          completedAt: new Date(),
           finalOdometer: odometer,
           fuelConsumed: fuel,
           actualDistance: distance,
@@ -400,7 +427,7 @@ async function cancel(req, res, next) {
     const updated = await prisma.$transaction(async (tx) => {
       const next = await tx.trip.update({
         where: { id: trip.id },
-        data: { status: "CANCELLED" },
+        data: { status: "CANCELLED", cancelledAt: new Date() },
         include: tripInclude(),
       });
 

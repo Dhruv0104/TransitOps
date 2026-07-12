@@ -128,11 +128,15 @@ model Trip {
   fuelConsumed    Float?
   finalOdometer   Float?
   revenue         Float?
+  etaMinutes      Int?
   status          TripStatus @default(DRAFT)
   vehicleId       String
   driverId        String
   vehicle         Vehicle    @relation(fields: [vehicleId], references: [id])
   driver          Driver     @relation(fields: [driverId], references: [id])
+  dispatchedAt    DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 }

@@ -16,7 +16,37 @@ const EMPTY_FORM = {
   driverId: '',
   cargoWeightKg: '',
   plannedDistance: '',
+  etaMinutes: '',
   revenue: '',
+}
+
+function estimateEtaFromDistance(km) {
+  const distance = Number(km)
+  if (!Number.isFinite(distance) || distance <= 0) return ''
+  return String(Math.max(15, Math.round((distance / 40) * 60)))
+}
+
+function formatEtaLabel(trip) {
+  const planned = trip.etaMinutes
+  if (!planned && planned !== 0) return null
+
+  if (trip.status === 'DISPATCHED' && trip.dispatchedAt) {
+    const end = new Date(trip.dispatchedAt).getTime() + planned * 60_000
+    const remaining = Math.max(0, Math.round((end - Date.now()) / 60_000))
+    if (remaining === 0) return 'Due now'
+    return `${remaining} min`
+  }
+
+  if (trip.status === 'COMPLETED' || trip.status === 'CANCELLED') {
+    return `${planned} min`
+  }
+
+  return `${planned} min`
+}
+
+function formatTimestamp(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleString()
 }
 
 export default function TripsPage() {
@@ -30,6 +60,7 @@ export default function TripsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTrip, setEditingTrip] = useState(null)
   const [completeTrip, setCompleteTrip] = useState(null)
+  const [lifecycleTrip, setLifecycleTrip] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [routeSource, setRouteSource] = useState(null)
   const [routeDestination, setRouteDestination] = useState(null)
@@ -142,9 +173,16 @@ export default function TripsPage() {
     setError('')
     try {
       const body = {
-        ...form,
+        source: form.source,
+        destination: form.destination,
+        vehicleId: form.vehicleId,
+        driverId: form.driverId,
         cargoWeightKg: Number(form.cargoWeightKg),
         plannedDistance: Number(form.plannedDistance),
+        etaMinutes:
+          form.etaMinutes === ''
+            ? undefined
+            : Number(form.etaMinutes),
         revenue: form.revenue === '' ? undefined : Number(form.revenue),
       }
       if (editingTrip) {
@@ -195,6 +233,10 @@ export default function TripsPage() {
       driverId: trip.driverId,
       cargoWeightKg: String(trip.cargoWeightKg),
       plannedDistance: String(trip.plannedDistance),
+      etaMinutes:
+        trip.etaMinutes != null
+          ? String(trip.etaMinutes)
+          : estimateEtaFromDistance(trip.plannedDistance),
       revenue: trip.revenue != null ? String(trip.revenue) : '',
     })
     setRouteSource(trip.source ? { label: trip.source } : null)
@@ -214,15 +256,23 @@ export default function TripsPage() {
   function handleRouteChange({ source, destination, plannedDistance }) {
     setRouteSource(source || null)
     setRouteDestination(destination || null)
-    setForm((f) => ({
-      ...f,
-      source: source?.label || f.source || '',
-      destination: destination?.label || f.destination || '',
-      plannedDistance:
+    setForm((f) => {
+      const nextDistance =
         plannedDistance !== undefined && plannedDistance !== ''
           ? plannedDistance
-          : f.plannedDistance,
-    }))
+          : f.plannedDistance
+      const autoEta = estimateEtaFromDistance(nextDistance)
+      return {
+        ...f,
+        source: source?.label || f.source || '',
+        destination: destination?.label || f.destination || '',
+        plannedDistance: nextDistance,
+        etaMinutes:
+          !f.etaMinutes || f.etaMinutes === estimateEtaFromDistance(f.plannedDistance)
+            ? autoEta || f.etaMinutes
+            : f.etaMinutes,
+      }
+    })
   }
 
   async function handleDispatch(trip) {
@@ -352,21 +402,23 @@ export default function TripsPage() {
               <th className="px-4 py-3">Cargo</th>
               <th className="px-4 py-3">Lifecycle</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">ETA</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <TableBodySkeleton rows={6} cols={8} />
+              <TableBodySkeleton rows={6} cols={9} />
             ) : trips.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted">
                   No trips yet.
                 </td>
               </tr>
             ) : (
               trips.map((trip) => {
                 const idx = stepIndex(trip.status)
+                const etaLabel = formatEtaLabel(trip)
                 return (
                   <tr key={trip.id} className="border-b border-line/70 last:border-0">
                     <td className="px-4 py-3 font-semibold text-accent">
@@ -386,24 +438,36 @@ export default function TripsPage() {
                     <td className="px-4 py-3">{trip.driver?.name || '—'}</td>
                     <td className="px-4 py-3">{trip.cargoWeightKg} kg</td>
                     <td className="px-4 py-3">
-                      {trip.status === 'CANCELLED' ? (
-                        <span className="text-xs text-danger">Cancelled</span>
-                      ) : (
-                        <div className="flex gap-1">
-                          {STEPS.map((step, i) => (
-                            <span
-                              key={step}
-                              className={`h-2 w-8 rounded-full ${
-                                i <= idx ? 'bg-accent' : 'bg-line'
-                              }`}
-                              title={step}
-                            />
-                          ))}
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setLifecycleTrip(trip)}
+                        className="rounded-md px-1 py-1 text-left hover:bg-canvas/70"
+                        title="View trip lifecycle timeline"
+                      >
+                        {trip.status === 'CANCELLED' ? (
+                          <span className="text-xs font-semibold text-danger">
+                            Cancelled
+                          </span>
+                        ) : (
+                          <div className="flex gap-1">
+                            {STEPS.map((step, i) => (
+                              <span
+                                key={step}
+                                className={`h-2 w-8 rounded-full ${
+                                  i <= idx ? 'bg-accent' : 'bg-line'
+                                }`}
+                                title={step}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge value={trip.status} kind="trip" />
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-accent">
+                      {etaLabel || <span className="font-normal text-muted">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
@@ -431,9 +495,14 @@ export default function TripsPage() {
                             onClick={() => {
                               setCompleteTrip(trip)
                               setCompleteForm({
-                                finalOdometer: String(trip.vehicle?.odometer ?? 0),
+                                finalOdometer: String(
+                                  trip.vehicle?.odometer ?? 0
+                                ),
                                 fuelConsumed: '',
-                                revenue: trip.revenue != null ? String(trip.revenue) : '',
+                                revenue:
+                                  trip.revenue != null
+                                    ? String(trip.revenue)
+                                    : '',
                               })
                             }}
                             className="btn-action"
@@ -441,7 +510,8 @@ export default function TripsPage() {
                             Complete
                           </button>
                         ) : null}
-                        {trip.status === 'DRAFT' || trip.status === 'DISPATCHED' ? (
+                        {trip.status === 'DRAFT' ||
+                        trip.status === 'DISPATCHED' ? (
                           <button
                             type="button"
                             onClick={() => handleCancel(trip)}
@@ -459,6 +529,81 @@ export default function TripsPage() {
           </tbody>
         </table>
       </div>
+
+      {lifecycleTrip ? (
+        <Modal
+          title={`Trip lifecycle · ${lifecycleTrip.tripCode || ''}`}
+          onClose={() => setLifecycleTrip(null)}
+        >
+          <ol className="relative ml-3 space-y-0 border-l border-line">
+            {[
+              {
+                key: 'draft',
+                label: 'Draft created',
+                at: lifecycleTrip.createdAt,
+                done: true,
+              },
+              {
+                key: 'dispatch',
+                label: 'Dispatched',
+                at: lifecycleTrip.dispatchedAt,
+                done: Boolean(lifecycleTrip.dispatchedAt),
+              },
+              lifecycleTrip.status === 'CANCELLED'
+                ? {
+                    key: 'cancel',
+                    label: 'Cancelled',
+                    at: lifecycleTrip.cancelledAt,
+                    done: Boolean(lifecycleTrip.cancelledAt),
+                    danger: true,
+                  }
+                : {
+                    key: 'complete',
+                    label: 'Completed',
+                    at: lifecycleTrip.completedAt,
+                    done: Boolean(lifecycleTrip.completedAt),
+                  },
+            ].map((step) => (
+              <li key={step.key} className="relative pb-5 pl-6 last:pb-0">
+                <span
+                  className={`absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full ${
+                    step.done
+                      ? step.danger
+                        ? 'bg-red-500'
+                        : 'bg-accent'
+                      : 'bg-line'
+                  }`}
+                />
+                <p
+                  className={`text-sm font-semibold ${
+                    step.done ? 'text-ink' : 'text-muted'
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {step.done ? formatTimestamp(step.at) : 'Pending'}
+                </p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-5 rounded-lg border border-line bg-canvas/50 px-3 py-2 text-xs text-muted">
+            <p>
+              Route: {lifecycleTrip.source} → {lifecycleTrip.destination}
+            </p>
+            <p className="mt-1">
+              Planned return ETA:{' '}
+              {lifecycleTrip.etaMinutes != null
+                ? `${lifecycleTrip.etaMinutes} min`
+                : '—'}
+              {lifecycleTrip.status === 'DISPATCHED'
+                ? ` · Live: ${formatEtaLabel(lifecycleTrip) || '—'}`
+                : ''}
+            </p>
+          </div>
+        </Modal>
+      ) : null}
 
       {modalOpen ? (
         <Modal
@@ -539,12 +684,38 @@ export default function TripsPage() {
                 step="any"
                 className="rounded-lg border border-line px-3 py-2 font-normal"
                 value={form.plannedDistance}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, plannedDistance: e.target.value }))
-                }
+                onChange={(e) => {
+                  const plannedDistance = e.target.value
+                  setForm((f) => ({
+                    ...f,
+                    plannedDistance,
+                    etaMinutes:
+                      !f.etaMinutes ||
+                      f.etaMinutes === estimateEtaFromDistance(f.plannedDistance)
+                        ? estimateEtaFromDistance(plannedDistance) || f.etaMinutes
+                        : f.etaMinutes,
+                  }))
+                }}
               />
               <span className="text-xs font-normal text-muted">
                 Auto-filled from map route — you can override if needed.
+              </span>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              ETA / Return time (minutes)
+              <input
+                type="number"
+                min="1"
+                step="1"
+                className="rounded-lg border border-line px-3 py-2 font-normal"
+                value={form.etaMinutes}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, etaMinutes: e.target.value }))
+                }
+                placeholder="e.g. 45"
+              />
+              <span className="text-xs font-normal text-muted">
+                Estimated return duration. Auto-calculated from distance (~40 km/h).
               </span>
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold sm:col-span-2">
