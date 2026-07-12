@@ -3,7 +3,7 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
-import TripRouteMap from '../components/TripRouteMap'
+import TripRouteMap, { resolvePlaceLabel } from '../components/TripRouteMap'
 
 const STEPS = ['DRAFT', 'DISPATCHED', 'COMPLETED']
 
@@ -25,6 +25,7 @@ export default function TripsPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTrip, setEditingTrip] = useState(null)
   const [completeTrip, setCompleteTrip] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [routeSource, setRouteSource] = useState(null)
@@ -36,17 +37,25 @@ export default function TripsPage() {
   })
   const [saving, setSaving] = useState(false)
 
-  const availableVehicles = useMemo(
-    () => vehicles.filter((v) => v.status === 'AVAILABLE'),
-    [vehicles]
-  )
-  const availableDrivers = useMemo(
-    () =>
-      drivers.filter(
-        (d) => d.status === 'AVAILABLE' && !d.licenseExpired && d.status !== 'SUSPENDED'
-      ),
-    [drivers]
-  )
+  const availableVehicles = useMemo(() => {
+    const list = vehicles.filter((v) => v.status === 'AVAILABLE')
+    if (editingTrip?.vehicleId) {
+      const current = vehicles.find((v) => v.id === editingTrip.vehicleId)
+      if (current && !list.some((v) => v.id === current.id)) list.unshift(current)
+    }
+    return list
+  }, [vehicles, editingTrip])
+
+  const availableDrivers = useMemo(() => {
+    const list = drivers.filter(
+      (d) => d.status === 'AVAILABLE' && !d.licenseExpired && d.status !== 'SUSPENDED'
+    )
+    if (editingTrip?.driverId) {
+      const current = drivers.find((d) => d.id === editingTrip.driverId)
+      if (current && !list.some((d) => d.id === current.id)) list.unshift(current)
+    }
+    return list
+  }, [drivers, editingTrip])
 
   const selectedVehicle = vehicles.find((v) => v.id === form.vehicleId)
   const overload =
@@ -77,7 +86,7 @@ export default function TripsPage() {
     load()
   }, [load])
 
-  async function handleCreate(e) {
+  async function handleSaveTrip(e) {
     e.preventDefault()
     if (!form.source || !form.destination) {
       setError('Select source and destination on the map or via search')
@@ -96,20 +105,26 @@ export default function TripsPage() {
     setSaving(true)
     setError('')
     try {
-      await apiRequest('/trips', {
-        method: 'POST',
-        token,
-        body: {
-          ...form,
-          cargoWeightKg: Number(form.cargoWeightKg),
-          plannedDistance: Number(form.plannedDistance),
-          revenue: form.revenue === '' ? undefined : Number(form.revenue),
-        },
-      })
-      setModalOpen(false)
-      setForm(EMPTY_FORM)
-      setRouteSource(null)
-      setRouteDestination(null)
+      const body = {
+        ...form,
+        cargoWeightKg: Number(form.cargoWeightKg),
+        plannedDistance: Number(form.plannedDistance),
+        revenue: form.revenue === '' ? undefined : Number(form.revenue),
+      }
+      if (editingTrip) {
+        await apiRequest(`/trips/${editingTrip.id}`, {
+          method: 'PUT',
+          token,
+          body,
+        })
+      } else {
+        await apiRequest('/trips', {
+          method: 'POST',
+          token,
+          body,
+        })
+      }
+      closeTripModal()
       await load()
     } catch (err) {
       setError(err.message)
@@ -118,13 +133,55 @@ export default function TripsPage() {
     }
   }
 
+  function closeTripModal() {
+    setModalOpen(false)
+    setEditingTrip(null)
+    setForm(EMPTY_FORM)
+    setRouteSource(null)
+    setRouteDestination(null)
+  }
+
+  function openCreateTrip() {
+    setEditingTrip(null)
+    setForm(EMPTY_FORM)
+    setRouteSource(null)
+    setRouteDestination(null)
+    setError('')
+    setModalOpen(true)
+  }
+
+  async function openEditTrip(trip) {
+    setEditingTrip(trip)
+    setForm({
+      source: trip.source || '',
+      destination: trip.destination || '',
+      vehicleId: trip.vehicleId,
+      driverId: trip.driverId,
+      cargoWeightKg: String(trip.cargoWeightKg),
+      plannedDistance: String(trip.plannedDistance),
+      revenue: trip.revenue != null ? String(trip.revenue) : '',
+    })
+    setRouteSource(trip.source ? { label: trip.source } : null)
+    setRouteDestination(trip.destination ? { label: trip.destination } : null)
+    setError('')
+    setModalOpen(true)
+
+    // Resolve saved labels to coordinates so inputs + map pins populate
+    const [src, dst] = await Promise.all([
+      resolvePlaceLabel(trip.source),
+      resolvePlaceLabel(trip.destination),
+    ])
+    if (src) setRouteSource(src)
+    if (dst) setRouteDestination(dst)
+  }
+
   function handleRouteChange({ source, destination, plannedDistance }) {
     setRouteSource(source || null)
     setRouteDestination(destination || null)
     setForm((f) => ({
       ...f,
-      source: source?.label || '',
-      destination: destination?.label || '',
+      source: source?.label || f.source || '',
+      destination: destination?.label || f.destination || '',
       plannedDistance:
         plannedDistance !== undefined && plannedDistance !== ''
           ? plannedDistance
@@ -198,12 +255,7 @@ export default function TripsPage() {
         </div>
         <button
           type="button"
-          onClick={() => {
-            setForm(EMPTY_FORM)
-            setRouteSource(null)
-            setRouteDestination(null)
-            setModalOpen(true)
-          }}
+          onClick={openCreateTrip}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
         >
           + Create Trip
@@ -279,13 +331,22 @@ export default function TripsPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         {trip.status === 'DRAFT' ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDispatch(trip)}
-                            className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
-                          >
-                            Dispatch
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEditTrip(trip)}
+                              className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDispatch(trip)}
+                              className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
+                            >
+                              Dispatch
+                            </button>
+                          </>
                         ) : null}
                         {trip.status === 'DISPATCHED' ? (
                           <button
@@ -323,14 +384,25 @@ export default function TripsPage() {
       </div>
 
       {modalOpen ? (
-        <Modal title="Create Trip" onClose={() => setModalOpen(false)} xl>
-          <form onSubmit={handleCreate} className="grid gap-3 sm:grid-cols-2">
+        <Modal
+          title={editingTrip ? 'Edit Draft Trip' : 'Create Trip'}
+          onClose={closeTripModal}
+          xl
+        >
+          <form onSubmit={handleSaveTrip} className="grid gap-3 sm:grid-cols-2">
             <TripRouteMap
               token={token}
               source={routeSource}
               destination={routeDestination}
               onRouteChange={handleRouteChange}
             />
+            {editingTrip ? (
+              <p className="sm:col-span-2 text-xs text-muted">
+                Existing route labels are loaded. Re-select source/destination on
+                the map to recalculate road distance, or keep the current planned
+                distance.
+              </p>
+            ) : null}
             <label className="flex flex-col gap-1 text-sm font-semibold">
               Vehicle (Available only)
               <select
@@ -420,7 +492,7 @@ export default function TripsPage() {
             <div className="sm:col-span-2 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={closeTripModal}
                 className="rounded-lg border border-line px-4 py-2 text-sm font-semibold"
               >
                 Cancel
@@ -430,7 +502,11 @@ export default function TripsPage() {
                 disabled={saving || overload}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
               >
-                {saving ? 'Creating…' : 'Create Draft'}
+                {saving
+                  ? 'Saving…'
+                  : editingTrip
+                    ? 'Save changes'
+                    : 'Create Draft'}
               </button>
             </div>
           </form>

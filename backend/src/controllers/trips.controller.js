@@ -146,6 +146,74 @@ async function create(req, res, next) {
   }
 }
 
+async function update(req, res, next) {
+  try {
+    const existing = await prisma.trip.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+    if (existing.status !== "DRAFT") {
+      return res.status(400).json({
+        message: "Only Draft trips can be edited",
+      });
+    }
+
+    const {
+      source,
+      destination,
+      vehicleId,
+      driverId,
+      cargoWeightKg,
+      plannedDistance,
+      revenue,
+    } = req.body;
+
+    if (
+      !source ||
+      !destination ||
+      !vehicleId ||
+      !driverId ||
+      cargoWeightKg === undefined ||
+      plannedDistance === undefined
+    ) {
+      return res.status(400).json({
+        message:
+          "source, destination, vehicleId, driverId, cargoWeightKg, and plannedDistance are required",
+      });
+    }
+
+    const check = await assertAssignable(
+      vehicleId,
+      driverId,
+      Number(cargoWeightKg)
+    );
+    if (check.error) {
+      return res.status(check.status).json({ message: check.error });
+    }
+
+    const trip = await prisma.trip.update({
+      where: { id: existing.id },
+      data: {
+        source: String(source).trim(),
+        destination: String(destination).trim(),
+        vehicleId,
+        driverId,
+        cargoWeightKg: Number(cargoWeightKg),
+        plannedDistance: Number(plannedDistance),
+        revenue:
+          revenue === undefined || revenue === "" ? null : Number(revenue),
+      },
+      include: tripInclude(),
+    });
+
+    return res.json({ trip });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function dispatch(req, res, next) {
   try {
     const trip = await prisma.trip.findUnique({
@@ -311,4 +379,4 @@ async function cancel(req, res, next) {
   }
 }
 
-module.exports = { list, getById, create, dispatch, complete, cancel };
+module.exports = { list, getById, create, update, dispatch, complete, cancel };

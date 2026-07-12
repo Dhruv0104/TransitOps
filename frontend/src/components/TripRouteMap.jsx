@@ -37,6 +37,24 @@ async function searchPlaces(query) {
   return res.json()
 }
 
+/** Resolve a saved place label back to coordinates for edit mode */
+export async function resolvePlaceLabel(label) {
+  if (!label?.trim()) return null
+  try {
+    const places = await searchPlaces(label)
+    if (places[0]) {
+      return {
+        lat: Number(places[0].lat),
+        lng: Number(places[0].lon),
+        label,
+      }
+    }
+  } catch {
+    // keep label-only fallback
+  }
+  return { label }
+}
+
 async function fetchDrivingRoute(token, a, b) {
   const params = new URLSearchParams({
     fromLng: String(a.lng),
@@ -64,6 +82,16 @@ function makeIcon(color, label) {
 const sourceIcon = makeIcon('#0f6b5c', 'A')
 const destIcon = makeIcon('#c2410c', 'B')
 
+function hasCoords(point) {
+  return (
+    point != null &&
+    typeof point.lat === 'number' &&
+    typeof point.lng === 'number' &&
+    !Number.isNaN(point.lat) &&
+    !Number.isNaN(point.lng)
+  )
+}
+
 function FitRoute({ path, source, destination }) {
   const map = useMap()
   useEffect(() => {
@@ -71,7 +99,7 @@ function FitRoute({ path, source, destination }) {
       map.fitBounds(path, { padding: [40, 40] })
       return
     }
-    if (source && destination) {
+    if (hasCoords(source) && hasCoords(destination)) {
       map.fitBounds(
         [
           [source.lat, source.lng],
@@ -79,9 +107,9 @@ function FitRoute({ path, source, destination }) {
         ],
         { padding: [40, 40] }
       )
-    } else if (source) {
+    } else if (hasCoords(source)) {
       map.setView([source.lat, source.lng], 12)
-    } else if (destination) {
+    } else if (hasCoords(destination)) {
       map.setView([destination.lat, destination.lng], 12)
     }
   }, [path, source, destination, map])
@@ -111,13 +139,18 @@ function PlaceSearch({ label, value, onSelect }) {
   const [results, setResults] = useState([])
   const [open, setOpen] = useState(false)
   const timer = useRef(null)
+  const userTyping = useRef(false)
 
   useEffect(() => {
+    userTyping.current = false
     setQuery(value || '')
+    setResults([])
+    setOpen(false)
   }, [value])
 
   useEffect(() => {
     clearTimeout(timer.current)
+    if (!userTyping.current) return
     if (query.trim().length < 3) {
       setResults([])
       return
@@ -125,7 +158,7 @@ function PlaceSearch({ label, value, onSelect }) {
     timer.current = setTimeout(async () => {
       const places = await searchPlaces(query)
       setResults(places)
-      setOpen(true)
+      setOpen(places.length > 0)
     }, 450)
     return () => clearTimeout(timer.current)
   }, [query])
@@ -138,18 +171,22 @@ function PlaceSearch({ label, value, onSelect }) {
           className="rounded-lg border border-line px-3 py-2 font-normal"
           value={query}
           placeholder="Search place or click map"
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            userTyping.current = true
+            setQuery(e.target.value)
+          }}
           onFocus={() => results.length && setOpen(true)}
         />
       </label>
       {open && results.length > 0 ? (
-        <ul className="absolute z-[1000] mt-1 max-h-40 w-full overflow-auto rounded-lg border border-line bg-white text-sm shadow-lg">
+        <ul className="absolute z-[1000] mt-1 max-h-40 w-full overflow-auto rounded-lg border border-line bg-surface text-sm shadow-lg">
           {results.map((place) => (
             <li key={`${place.place_id}`}>
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left hover:bg-accent-soft"
                 onClick={() => {
+                  userTyping.current = false
                   onSelect({
                     lat: Number(place.lat),
                     lng: Number(place.lon),
@@ -182,10 +219,46 @@ export default function TripRouteMap({
   const [routeError, setRouteError] = useState('')
 
   const center = useMemo(() => {
-    if (source) return [source.lat, source.lng]
-    if (destination) return [destination.lat, destination.lng]
+    if (hasCoords(source)) return [source.lat, source.lng]
+    if (hasCoords(destination)) return [destination.lat, destination.lng]
     return DEFAULT_CENTER
   }, [source, destination])
+
+  // When edit mode resolves labels → coords, draw the road route
+  useEffect(() => {
+    let cancelled = false
+    async function loadRoute() {
+      if (!hasCoords(source) || !hasCoords(destination)) {
+        setRoutePath([])
+        setRouteMeta(null)
+        return
+      }
+      if (routePath.length > 1) return
+      setBusy(true)
+      setRouteError('')
+      try {
+        const route = await fetchDrivingRoute(token, source, destination)
+        if (cancelled) return
+        setRoutePath(route.path || [])
+        setRouteMeta({
+          distanceKm: route.distanceKm,
+          durationMin: route.durationMin,
+        })
+      } catch (err) {
+        if (cancelled) return
+        setRoutePath([])
+        setRouteMeta(null)
+        setRouteError(err.message || 'Could not load road route for this trip')
+      } finally {
+        if (!cancelled) setBusy(false)
+      }
+    }
+    loadRoute()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when coords become available
+  }, [source?.lat, source?.lng, destination?.lat, destination?.lng, token])
 
   async function applyPoint(role, lat, lng, label) {
     setBusy(true)
@@ -196,7 +269,7 @@ export default function TripRouteMap({
       const nextSource = role === 'source' ? point : source
       const nextDest = role === 'destination' ? point : destination
 
-      if (!nextSource || !nextDest) {
+      if (!hasCoords(nextSource) || !hasCoords(nextDest)) {
         setRoutePath([])
         setRouteMeta(null)
         onRouteChange({
@@ -273,11 +346,13 @@ export default function TripRouteMap({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <PlaceSearch
+          key={`source-${source?.label || 'new'}`}
           label="Source"
           value={source?.label || ''}
           onSelect={(point) => applyPoint('source', point.lat, point.lng, point.label)}
         />
         <PlaceSearch
+          key={`destination-${destination?.label || 'new'}`}
           label="Destination"
           value={destination?.label || ''}
           onSelect={(point) =>
@@ -285,6 +360,19 @@ export default function TripRouteMap({
           }
         />
       </div>
+
+      {(source?.label || destination?.label) && (
+        <div className="rounded-lg border border-line bg-canvas/60 px-3 py-2 text-xs text-muted">
+          <p>
+            <span className="font-semibold text-ink">Source:</span>{' '}
+            {source?.label || 'Not set'}
+          </p>
+          <p className="mt-1">
+            <span className="font-semibold text-ink">Destination:</span>{' '}
+            {destination?.label || 'Not set'}
+          </p>
+        </div>
+      )}
 
       <div className="h-72 overflow-hidden rounded-xl border border-line z-0">
         <MapContainer
@@ -303,10 +391,10 @@ export default function TripRouteMap({
             onPick={(role, lat, lng) => applyPoint(role, lat, lng)}
           />
           <FitRoute path={routePath} source={source} destination={destination} />
-          {source ? (
+          {hasCoords(source) ? (
             <Marker position={[source.lat, source.lng]} icon={sourceIcon} />
           ) : null}
-          {destination ? (
+          {hasCoords(destination) ? (
             <Marker position={[destination.lat, destination.lng]} icon={destIcon} />
           ) : null}
           {routePath.length > 1 ? (
