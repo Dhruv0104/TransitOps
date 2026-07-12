@@ -53,22 +53,24 @@ App: `http://localhost:5173`
 
 Password for all: `password123`
 
-| Email | Role |
-|-------|------|
-| dvpatel6048@gmail.com | Admin (full access, users & settings) |
-| patelromil.surajnagar@gmail.com | Fleet Manager |
-| nazneenpatel189@gmail.com | Dispatcher |
-| nehapatel200512@gmail.com | Safety Officer |
-| echoflex2024@gmail.com | Financial Analyst |
+| Email | Role | Name |
+|-------|------|------|
+| dvpatel6048@gmail.com | Admin | Dhruv Patel |
+| patelromil.surajnagar@gmail.com | Fleet Manager | Romil Patel |
+| nazneenpatel189@gmail.com | Dispatcher | Nazneen Patel |
+| nehapatel200512@gmail.com | Safety Officer | Neha Patel |
+| echoflex2024@gmail.com | Financial Analyst | Karan Shah |
+
+`npm run seed` loads a full **Gujarat** demo fleet (Ahmedabad / Surat / Vadodara / Rajkot corridors): GJ-plated vehicles, Gujarati drivers, completed + live trips, maintenance, fuel, tolls, and sample documents — ready for screenshots and walkthrough videos.
 
 ## Demo Workflow
 
-1. Fleet Manager → register vehicle **Van-05** (max 500 kg)
-2. Safety Officer → register driver **Alex** (valid license)
-3. Dispatcher/Fleet → create trip cargo **450 kg** → Dispatch
-4. Complete trip with final odometer + fuel
-5. Fleet Manager → open maintenance (vehicle goes **In Shop**, hidden from dispatch)
-6. Finance → review fuel/expenses and export CSV report
+1. Sign in as Fleet Manager → review vehicles (e.g. **Tata Ace Gold** `GJ-01-AB-4521`)
+2. Safety Officer → check license alerts (Hardik expired; Mehul / Priya / Chirag expiring soon)
+3. Dispatcher → open live trips (Ahmedabad→Surat, Surat→Mundra) or dispatch a draft
+4. Complete a trip with final odometer + fuel, or close maintenance on **Tata 407** (`GJ-18`)
+5. Finance → review fuel/expenses and export CSV / PDF reports
+6. Admin → Users & Settings (Naroda Central Depot, INR)
 
 ## Features
 

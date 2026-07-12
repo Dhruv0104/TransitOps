@@ -14,9 +14,9 @@ import {
 
 function Pill({ label, tone = 'neutral' }) {
   const tones = {
-    success: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30',
-    danger: 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30',
-    neutral: 'bg-slate-500/20 text-slate-300 ring-1 ring-slate-500/30',
+    success: 'status-badge status-success',
+    danger: 'status-badge status-danger',
+    neutral: 'status-badge status-neutral',
   }
   return (
     <span

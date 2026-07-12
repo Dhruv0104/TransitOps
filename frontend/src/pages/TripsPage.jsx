@@ -406,14 +406,14 @@ export default function TripsPage() {
                             <button
                               type="button"
                               onClick={() => openEditTrip(trip)}
-                              className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
+                              className="btn-action"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDispatch(trip)}
-                              className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
+                              className="btn-action"
                             >
                               Dispatch
                             </button>
@@ -430,7 +430,7 @@ export default function TripsPage() {
                                 revenue: trip.revenue != null ? String(trip.revenue) : '',
                               })
                             }}
-                            className="rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent"
+                            className="btn-action"
                           >
                             Complete
                           </button>
@@ -439,7 +439,7 @@ export default function TripsPage() {
                           <button
                             type="button"
                             onClick={() => handleCancel(trip)}
-                            className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-danger"
+                            className="btn-action-danger"
                           >
                             Cancel
                           </button>
