@@ -303,7 +303,7 @@ export default function TripsPage() {
       <div className="mt-4 grid gap-3 md:grid-cols-4">
         <input
           className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
-          placeholder="Search route…"
+          placeholder="Search trip ID or route…"
           value={filters.q}
           onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
         />
@@ -345,6 +345,7 @@ export default function TripsPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-line bg-canvas/70 text-xs uppercase tracking-wide text-muted">
             <tr>
+              <th className="px-4 py-3">Trip ID</th>
               <th className="px-4 py-3">Route</th>
               <th className="px-4 py-3">Vehicle</th>
               <th className="px-4 py-3">Driver</th>
@@ -356,10 +357,10 @@ export default function TripsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <TableBodySkeleton rows={6} cols={7} />
+              <TableBodySkeleton rows={6} cols={8} />
             ) : trips.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted">
                   No trips yet.
                 </td>
               </tr>
@@ -368,6 +369,9 @@ export default function TripsPage() {
                 const idx = stepIndex(trip.status)
                 return (
                   <tr key={trip.id} className="border-b border-line/70 last:border-0">
+                    <td className="px-4 py-3 font-semibold text-accent">
+                      {trip.tripCode || '—'}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">
                         {trip.source} → {trip.destination}

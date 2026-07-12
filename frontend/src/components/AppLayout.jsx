@@ -32,8 +32,8 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[250px_1fr]">
-      <aside className="sticky top-0 z-10 flex flex-col gap-6 border-r border-line bg-sidebar px-4 py-6 text-ink lg:min-h-screen">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden lg:flex-row">
+      <aside className="flex shrink-0 flex-col gap-4 border-b border-line bg-sidebar px-4 py-4 text-ink lg:h-full lg:w-[250px] lg:gap-6 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:py-6">
         <div className="flex items-center gap-3 px-2">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-sm font-bold text-white shadow-md shadow-orange-500/30">
             TO
@@ -43,7 +43,7 @@ export default function AppLayout() {
             <p className="text-xs text-muted">Operations Console</p>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto lg:flex-col">
+        <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-x-visible">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end} className={navClass}>
               {link.label}
@@ -52,8 +52,8 @@ export default function AppLayout() {
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-col bg-canvas">
-        <header className="flex items-center justify-between gap-4 border-b border-line bg-panel/80 px-6 py-4 backdrop-blur">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-panel/95 px-6 py-4 backdrop-blur">
           <div>
             <p className="text-xs text-muted">Signed in as</p>
             <p className="font-semibold text-ink">{user?.name || 'User'}</p>
@@ -72,7 +72,7 @@ export default function AppLayout() {
             </button>
           </div>
         </header>
-        <main className="p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>

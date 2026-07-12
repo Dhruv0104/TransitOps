@@ -4,9 +4,9 @@ async function getKpis(req, res, next) {
   try {
     const { type, status, region } = req.query;
     const vehicleWhere = {};
-    if (type) vehicleWhere.type = { equals: type, mode: "insensitive" };
+    if (type) vehicleWhere.type = { contains: type, mode: "insensitive" };
     if (status) vehicleWhere.status = status;
-    if (region) vehicleWhere.region = { equals: region, mode: "insensitive" };
+    if (region) vehicleWhere.region = { contains: region, mode: "insensitive" };
 
     const vehicles = await prisma.vehicle.findMany({ where: vehicleWhere });
     const nonRetired = vehicles.filter((v) => v.status !== "RETIRED");
@@ -62,6 +62,7 @@ async function getKpis(req, res, next) {
       })),
       recentTrips: recentTrips.map((t) => ({
         id: t.id,
+        tripCode: t.tripCode,
         source: t.source,
         destination: t.destination,
         status: t.status,

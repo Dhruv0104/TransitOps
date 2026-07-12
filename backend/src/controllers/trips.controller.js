@@ -1,6 +1,35 @@
 const prisma = require("../lib/prisma");
 const { isLicenseExpired } = require("./drivers.controller");
 
+async function nextTripCode(client = prisma) {
+  const latest = await client.trip.findFirst({
+    where: { tripCode: { startsWith: "TRP" } },
+    orderBy: { createdAt: "desc" },
+    select: { tripCode: true },
+  });
+
+  let next = 1;
+  if (latest?.tripCode) {
+    const match = String(latest.tripCode).match(/TRP(\d+)/i);
+    if (match) next = Number(match[1]) + 1;
+  } else {
+    const count = await client.trip.count();
+    next = count + 1;
+  }
+
+  // Avoid collisions if codes were created out of order
+  for (let i = 0; i < 50; i += 1) {
+    const code = `TRP${String(next + i).padStart(3, "0")}`;
+    const exists = await client.trip.findUnique({
+      where: { tripCode: code },
+      select: { id: true },
+    });
+    if (!exists) return code;
+  }
+
+  return `TRP${Date.now().toString().slice(-6)}`;
+}
+
 function tripInclude() {
   return {
     vehicle: true,
@@ -69,6 +98,7 @@ async function list(req, res, next) {
     if (status) where.status = status;
     if (q) {
       where.OR = [
+        { tripCode: { contains: q, mode: "insensitive" } },
         { source: { contains: q, mode: "insensitive" } },
         { destination: { contains: q, mode: "insensitive" } },
       ];
@@ -137,8 +167,11 @@ async function create(req, res, next) {
       return res.status(check.status).json({ message: check.error });
     }
 
+    const tripCode = await nextTripCode();
+
     const trip = await prisma.trip.create({
       data: {
+        tripCode,
         source: String(source).trim(),
         destination: String(destination).trim(),
         vehicleId,

@@ -119,6 +119,7 @@ model Driver {
 
 model Trip {
   id              String     @id @default(uuid())
+  tripCode        String     @unique
   source          String
   destination     String
   cargoWeightKg   Float
