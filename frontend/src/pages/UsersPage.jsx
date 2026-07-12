@@ -160,6 +160,24 @@ export default function UsersPage() {
     }
   }
 
+  async function handleUnlock(u) {
+    setError('')
+    try {
+      await apiRequest(`/users/${u.id}`, {
+        method: 'PUT',
+        token,
+        body: { unlock: true, isActive: true },
+      })
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function isLocked(u) {
+    return u.lockedUntil && new Date(u.lockedUntil).getTime() > Date.now()
+  }
+
   async function handleDelete(u) {
     if (u.id === currentUser?.id) {
       setError('You cannot delete your own account')
@@ -261,10 +279,15 @@ export default function UsersPage() {
                     {u.role.replaceAll('_', ' ')}
                   </td>
                   <td className="px-4 py-3">
-                    <Pill
-                      label={u.isActive ? 'Active' : 'Inactive'}
-                      tone={u.isActive ? 'success' : 'danger'}
-                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      <Pill
+                        label={u.isActive ? 'Active' : 'Inactive'}
+                        tone={u.isActive ? 'success' : 'danger'}
+                      />
+                      {isLocked(u) ? (
+                        <Pill label="Locked" tone="danger" />
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -275,6 +298,15 @@ export default function UsersPage() {
                       >
                         Edit
                       </button>
+                      {isLocked(u) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlock(u)}
+                          className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 hover:bg-amber-500/20"
+                        >
+                          Unlock
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => handleToggleActive(u)}

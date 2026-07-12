@@ -17,6 +17,8 @@ const userSelect = {
   name: true,
   role: true,
   isActive: true,
+  failedLoginAttempts: true,
+  lockedUntil: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -158,6 +160,17 @@ async function update(req, res, next) {
           .json({ message: "Password must be at least 6 characters" });
       }
       data.password = await bcrypt.hash(password, 10);
+    }
+
+    // Activating a user also clears login lockout
+    if (data.isActive === true) {
+      data.failedLoginAttempts = 0;
+      data.lockedUntil = null;
+    }
+
+    if (req.body.unlock === true) {
+      data.failedLoginAttempts = 0;
+      data.lockedUntil = null;
     }
 
     if (req.user.userId === existing.id && data.isActive === false) {

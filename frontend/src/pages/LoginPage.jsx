@@ -56,11 +56,16 @@ const ROLE_OPTIONS = [
 export default function LoginPage() {
   const { token, login, ready } = useAuth()
   const navigate = useNavigate()
+  const [mode, setMode] = useState('login') // login | forgot | reset
   const [role, setRole] = useState('ADMIN')
   const [email, setEmail] = useState('dvpatel6048@gmail.com')
   const [password, setPassword] = useState('password123')
+  const [resetCode, setResetCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
 
   if (!ready) {
@@ -73,6 +78,13 @@ export default function LoginPage() {
 
   if (token) return <Navigate to="/" replace />
 
+  function switchMode(next) {
+    setMode(next)
+    setError('')
+    setInfo('')
+    setLoading(false)
+  }
+
   function handleRoleChange(nextRole) {
     setRole(nextRole)
     const match = ROLE_OPTIONS.find((r) => r.value === nextRole)
@@ -83,12 +95,12 @@ export default function LoginPage() {
     setError('')
   }
 
-  async function handleSubmit(e) {
+  async function handleLogin(e) {
     e.preventDefault()
     const validationError = firstError(
-      required(role, 'Role'),
       validateEmail(email),
-      validatePassword(password, 'Password', { min: 6 })
+      validatePassword(password, 'Password', { min: 6 }),
+      required(role, 'Role')
     )
     if (validationError) {
       setError(validationError)
@@ -96,6 +108,7 @@ export default function LoginPage() {
     }
 
     setError('')
+    setInfo('')
     setLoading(true)
     try {
       const data = await apiRequest('/auth/login', {
@@ -118,6 +131,85 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
+  async function handleForgot(e) {
+    e.preventDefault()
+    const validationError = validateEmail(email)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError('')
+    setInfo('')
+    setLoading(true)
+    try {
+      const data = await apiRequest('/auth/forgot-password', {
+        method: 'POST',
+        body: { email: email.trim() },
+      })
+      setInfo(data.message || 'If an account exists, a reset code was sent.')
+      setMode('reset')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleReset(e) {
+    e.preventDefault()
+    const validationError = firstError(
+      validateEmail(email),
+      required(resetCode, 'Reset code'),
+      validatePassword(newPassword, 'New password', { min: 6 })
+    )
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setError('')
+    setInfo('')
+    setLoading(true)
+    try {
+      const data = await apiRequest('/auth/reset-password', {
+        method: 'POST',
+        body: {
+          email: email.trim(),
+          code: resetCode.trim(),
+          password: newPassword,
+        },
+      })
+      setInfo(data.message || 'Password updated. You can sign in now.')
+      setPassword(newPassword)
+      setResetCode('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setMode('login')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const title =
+    mode === 'forgot'
+      ? 'Forgot password'
+      : mode === 'reset'
+        ? 'Reset password'
+        : 'Sign in'
+  const subtitle =
+    mode === 'forgot'
+      ? 'Enter your account email and we will send a 6-digit reset code.'
+      : mode === 'reset'
+        ? 'Enter the code from your email and choose a new password.'
+        : 'Enter your credentials, then confirm your role to continue.'
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -166,7 +258,8 @@ export default function LoginPage() {
           </ul>
         </div>
         <p className="relative text-xs text-muted">
-          Demo access ready — choose a role on the right to auto-fill credentials.
+          Accounts lock after 5 failed sign-in attempts. Use Forgot Password to
+          recover access.
         </p>
       </section>
 
@@ -175,82 +268,191 @@ export default function LoginPage() {
           <ThemeToggle />
         </div>
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            mode === 'forgot'
+              ? handleForgot
+              : mode === 'reset'
+                ? handleReset
+                : handleLogin
+          }
           className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-xl shadow-black/10 sm:p-8"
         >
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
             Welcome back
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-ink">Sign in</h1>
-          <p className="mt-2 text-sm text-muted">
-            Choose your role to load the demo account, then sign in.
-          </p>
+          <h1 className="mt-2 text-3xl font-semibold text-ink">{title}</h1>
+          <p className="mt-2 text-sm text-muted">{subtitle}</p>
 
           {error ? (
             <p className="mt-4 rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           ) : null}
+          {info ? (
+            <p className="mt-4 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400">
+              {info}
+            </p>
+          ) : null}
 
           <label className="mt-8 flex flex-col gap-1.5 text-sm font-semibold text-ink">
-            Role
-            <select
-              value={role}
-              onChange={(e) => handleRoleChange(e.target.value)}
-              className="field"
-            >
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
             Email
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               className="field"
             />
           </label>
 
-          <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="field"
-            />
-          </label>
+          {mode === 'login' ? (
+            <>
+              <div className="mt-4">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="login-password"
+                    className="text-sm font-semibold text-ink"
+                  >
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgot')}
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="field"
+                />
+              </div>
 
-          <label className="mt-4 flex items-center gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              className="rounded border-line accent-orange-500"
-            />
-            Remember me
-          </label>
+              <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
+                Role
+                <select
+                  value={role}
+                  onChange={(e) => handleRoleChange(e.target.value)}
+                  className="field"
+                >
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
+              <label className="mt-4 flex items-center gap-2 text-sm text-muted">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="rounded border-line accent-orange-500"
+                />
+                Remember me
+              </label>
 
-          <p className="mt-4 text-xs text-muted">
-            Demo password for all roles:{' '}
-            <span className="font-semibold text-ink">password123</span>
-          </p>
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? 'Signing in…' : 'Sign In'}
+              </button>
+
+              <p className="mt-4 text-xs text-muted">
+                Demo password for all roles:{' '}
+                <span className="font-semibold text-ink">password123</span>
+              </p>
+            </>
+          ) : null}
+
+          {mode === 'forgot' ? (
+            <>
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? 'Sending…' : 'Send reset code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="mt-3 w-full rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:border-accent/50"
+              >
+                Back to sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('reset')}
+                className="mt-3 w-full text-center text-xs font-semibold text-accent hover:underline"
+              >
+                Already have a code? Reset password
+              </button>
+            </>
+          ) : null}
+
+          {mode === 'reset' ? (
+            <>
+              <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
+                Reset code
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  required
+                  placeholder="6-digit code"
+                  className="field tracking-widest"
+                />
+              </label>
+              <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
+                New password
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  className="field"
+                />
+              </label>
+              <label className="mt-4 flex flex-col gap-1.5 text-sm font-semibold text-ink">
+                Confirm password
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  className="field"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? 'Updating…' : 'Update password'}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="mt-3 w-full rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink hover:border-accent/50"
+              >
+                Back to sign in
+              </button>
+            </>
+          ) : null}
         </form>
       </section>
     </div>
