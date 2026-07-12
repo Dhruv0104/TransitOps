@@ -21,6 +21,10 @@ function authorize(...roles) {
     if (!req.user) {
       return res.status(401).json({ message: "Authentication required" });
     }
+    // Admin has access to all protected routes
+    if (req.user.role === "ADMIN") {
+      return next();
+    }
     if (roles.length && !roles.includes(req.user.role)) {
       return res.status(403).json({ message: "Insufficient permissions" });
     }

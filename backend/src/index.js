@@ -13,6 +13,8 @@ const fuelRoutes = require("./routes/fuel.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const reportsRoutes = require("./routes/reports.routes");
 const routingRoutes = require("./routes/routing.routes");
+const usersRoutes = require("./routes/users.routes");
+const settingsRoutes = require("./routes/settings.routes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -31,6 +33,8 @@ app.use("/api/fuel", fuelRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/routing", routingRoutes);
+app.use("/api/users", usersRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

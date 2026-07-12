@@ -12,8 +12,9 @@ datasource db {
 }
 
 enum Role {
+  ADMIN
   FLEET_MANAGER
-  DRIVER
+  DISPATCHER
   SAFETY_OFFICER
   FINANCIAL_ANALYST
 }
@@ -45,8 +46,24 @@ model User {
   password  String
   name      String
   role      Role
+  isActive  Boolean  @default(true)
+  verified  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Organization {
+  id           String   @id @default(uuid())
+  name         String
+  address      String?
+  contactNo    String?
+  email        String?
+  depotName    String?
+  distanceUnit String?  @default("km")
+  currencyType String?  @default("INR")
+  rbacConfig   Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Vehicle {

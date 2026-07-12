@@ -4,7 +4,7 @@ const prisma = require("../lib/prisma");
 
 const VALID_ROLES = [
   "FLEET_MANAGER",
-  "DRIVER",
+  "DISPATCHER",
   "SAFETY_OFFICER",
   "FINANCIAL_ANALYST",
 ];
@@ -15,6 +15,17 @@ function signToken(user) {
     process.env.JWT_SECRET || "dev-secret",
     { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
   );
+}
+
+function toSafeUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isActive: user.isActive,
+    verified: user.verified,
+  };
 }
 
 async function register(req, res, next) {
@@ -40,8 +51,22 @@ async function register(req, res, next) {
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, password: hashed, name, role },
-      select: { id: true, email: true, name: true, role: true },
+      data: {
+        email,
+        password: hashed,
+        name,
+        role,
+        verified: false,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        verified: true,
+      },
     });
 
     const token = signToken(user);
@@ -64,17 +89,18 @@ async function login(req, res, next) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "Account is deactivated. Contact an administrator.",
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const safeUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    const safeUser = toSafeUser(user);
 
     const token = signToken(safeUser);
     return res.json({ user: safeUser, token });
@@ -87,11 +113,24 @@ async function me(req, res, next) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      select: { id: true, email: true, name: true, role: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        verified: true,
+      },
     });
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "Account is deactivated. Contact an administrator.",
+      });
     }
 
     return res.json({ user });
