@@ -3,9 +3,19 @@ import { apiRequest } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
+import {
+  dateRequired,
+  email as validateEmail,
+  firstError,
+  minLength,
+  phone,
+  positiveNumber,
+  required,
+} from '../lib/validation'
 
 const EMPTY_FORM = {
   name: '',
+  email: '',
   licenseNumber: '',
   licenseCategory: 'LMV',
   licenseExpiry: '',
@@ -26,11 +36,18 @@ export default function DriversPage() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState({ q: '', status: '' })
+  const [filters, setFilters] = useState({
+    q: '',
+    status: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  })
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [reminderMsg, setReminderMsg] = useState('')
+  const [reminderSending, setReminderSending] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,6 +56,8 @@ export default function DriversPage() {
       const params = new URLSearchParams()
       if (filters.q) params.set('q', filters.q)
       if (filters.status) params.set('status', filters.status)
+      if (filters.sortBy) params.set('sortBy', filters.sortBy)
+      if (filters.sortOrder) params.set('sortOrder', filters.sortOrder)
       const qs = params.toString()
       const data = await apiRequest(`/drivers${qs ? `?${qs}` : ''}`, { token })
       setDrivers(data.drivers || [])
@@ -65,6 +84,7 @@ export default function DriversPage() {
     setEditing(driver)
     setForm({
       name: driver.name,
+      email: driver.email || '',
       licenseNumber: driver.licenseNumber,
       licenseCategory: driver.licenseCategory,
       licenseExpiry: toDateInput(driver.licenseExpiry),
@@ -77,15 +97,39 @@ export default function DriversPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    const validationError = firstError(
+      minLength(form.name, 2, 'Name'),
+      validateEmail(form.email, 'Email'),
+      required(form.licenseNumber, 'License number'),
+      required(form.licenseCategory, 'License category'),
+      dateRequired(form.licenseExpiry, 'License expiry'),
+      phone(form.contactNumber),
+      editing
+        ? positiveNumber(form.safetyScore, 'Safety score', { allowZero: true })
+        : ''
+    )
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    if (editing) {
+      const score = Number(form.safetyScore)
+      if (score < 0 || score > 100) {
+        setError('Safety score must be between 0 and 100')
+        return
+      }
+    }
+
     setSaving(true)
     setError('')
     try {
       const body = {
-        name: form.name,
-        licenseNumber: form.licenseNumber,
-        licenseCategory: form.licenseCategory,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        licenseNumber: form.licenseNumber.trim(),
+        licenseCategory: form.licenseCategory.trim(),
         licenseExpiry: form.licenseExpiry,
-        contactNumber: form.contactNumber,
+        contactNumber: form.contactNumber.trim(),
       }
       if (editing) {
         body.safetyScore = Number(form.safetyScore)
@@ -118,6 +162,36 @@ export default function DriversPage() {
     }
   }
 
+  async function sendLicenseReminders() {
+    setReminderMsg('')
+    setError('')
+    setReminderSending(true)
+    try {
+      const data = await apiRequest('/jobs/license-reminders?force=true', {
+        method: 'POST',
+        token,
+        body: { force: true },
+      })
+
+      if (data.warning && data.sent === 0) {
+        setReminderMsg(data.warning)
+      } else if (data.sent > 0) {
+        const names = (data.drivers || []).map((d) => d.name).join(', ')
+        const to = (data.recipients || []).join(', ')
+        setReminderMsg(
+          `Email sent for ${data.sent} driver(s)${names ? `: ${names}` : ''}. To: ${to || 'n/a'} (${data.mode})`
+        )
+      } else {
+        setReminderMsg(data.message || 'No reminders sent')
+      }
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setReminderSending(false)
+    }
+  }
+
   return (
     <section>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -127,16 +201,26 @@ export default function DriversPage() {
             Profiles, license compliance, safety scores, and duty status.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90"
-        >
-          + Add Driver
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={sendLicenseReminders}
+            disabled={reminderSending}
+            className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:border-accent/50 disabled:opacity-60"
+          >
+            {reminderSending ? 'Sending…' : 'Send license reminders'}
+          </button>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90"
+          >
+            + Add Driver
+          </button>
+        </div>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
         <input
           className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
           placeholder="Search name / license"
@@ -155,7 +239,34 @@ export default function DriversPage() {
             </option>
           ))}
         </select>
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.sortBy}
+          onChange={(e) => setFilters((f) => ({ ...f, sortBy: e.target.value }))}
+        >
+          <option value="createdAt">Sort: Created</option>
+          <option value="name">Sort: Name</option>
+          <option value="licenseExpiry">Sort: License expiry</option>
+          <option value="safetyScore">Sort: Safety score</option>
+          <option value="status">Sort: Status</option>
+        </select>
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.sortOrder}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, sortOrder: e.target.value }))
+          }
+        >
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
       </div>
+
+      {reminderMsg ? (
+        <p className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          {reminderMsg}
+        </p>
+      ) : null}
 
       {alerts.length > 0 ? (
         <div className="mt-4 space-y-2">
@@ -164,13 +275,18 @@ export default function DriversPage() {
               key={driver.id}
               className={`rounded-xl border px-4 py-3 text-sm ${
                 driver.licenseExpired
-                  ? 'border-red-200 bg-red-50 text-danger'
-                  : 'border-amber-200 bg-amber-50 text-amber-900'
+                  ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
               }`}
             >
-              {driver.licenseExpired
-                ? `License expired: ${driver.name} (${driver.licenseNumber}) cannot be assigned to trips.`
-                : `Expiring soon: ${driver.name}'s license expires in ${driver.daysUntilLicenseExpiry} day(s).`}
+              <p className="font-semibold text-ink">
+                {driver.licenseExpired ? 'License expired' : 'License expiring soon'}
+              </p>
+              <p className="mt-1 text-muted">
+                {driver.licenseExpired
+                  ? `${driver.name} (${driver.licenseNumber}) cannot be assigned to trips until the license is renewed.`
+                  : `${driver.name}'s license expires in ${driver.daysUntilLicenseExpiry} day(s).`}
+              </p>
             </div>
           ))}
         </div>
@@ -183,6 +299,7 @@ export default function DriversPage() {
           <thead className="border-b border-line bg-canvas/70 text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3 font-semibold">Name</th>
+              <th className="px-4 py-3 font-semibold">Email</th>
               <th className="px-4 py-3 font-semibold">License No</th>
               <th className="px-4 py-3 font-semibold">Category</th>
               <th className="px-4 py-3 font-semibold">Expiry</th>
@@ -195,13 +312,13 @@ export default function DriversPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted">
                   Loading drivers…
                 </td>
               </tr>
             ) : drivers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted">
                   No drivers yet. Register Alex with a valid license for the demo.
                 </td>
               </tr>
@@ -209,15 +326,16 @@ export default function DriversPage() {
               drivers.map((driver) => (
                 <tr key={driver.id} className="border-b border-line/70 last:border-0">
                   <td className="px-4 py-3 font-medium">{driver.name}</td>
+                  <td className="px-4 py-3 text-muted">{driver.email || '—'}</td>
                   <td className="px-4 py-3">{driver.licenseNumber}</td>
                   <td className="px-4 py-3">{driver.licenseCategory}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
                       <span>{toDateInput(driver.licenseExpiry)}</span>
                       {driver.licenseExpired ? (
-                        <span className="text-xs font-semibold text-danger">Expired</span>
+                        <span className="text-xs font-semibold text-red-400">Expired</span>
                       ) : driver.licenseExpiringSoon ? (
-                        <span className="text-xs font-semibold text-amber-700">
+                        <span className="text-xs font-semibold text-amber-400">
                           Expiring soon
                         </span>
                       ) : null}
@@ -271,16 +389,27 @@ export default function DriversPage() {
               Name
               <input
                 required
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="field"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              Email
+              <input
+                required
+                type="email"
+                className="field"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="driver@example.com"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-semibold">
               License Number
               <input
                 required
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="field"
                 value={form.licenseNumber}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, licenseNumber: e.target.value }))
@@ -291,7 +420,7 @@ export default function DriversPage() {
               License Category
               <input
                 required
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="field"
                 value={form.licenseCategory}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, licenseCategory: e.target.value }))
@@ -303,7 +432,7 @@ export default function DriversPage() {
               <input
                 required
                 type="date"
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="field"
                 value={form.licenseExpiry}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, licenseExpiry: e.target.value }))
@@ -314,7 +443,7 @@ export default function DriversPage() {
               Contact Number
               <input
                 required
-                className="rounded-lg border border-line px-3 py-2 font-normal"
+                className="field"
                 value={form.contactNumber}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, contactNumber: e.target.value }))
@@ -329,7 +458,7 @@ export default function DriversPage() {
                     type="number"
                     min="0"
                     max="100"
-                    className="rounded-lg border border-line px-3 py-2 font-normal"
+                    className="field"
                     value={form.safetyScore}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, safetyScore: e.target.value }))
@@ -339,7 +468,7 @@ export default function DriversPage() {
                 <label className="flex flex-col gap-1 text-sm font-semibold">
                   Status
                   <select
-                    className="rounded-lg border border-line px-3 py-2 font-normal"
+                    className="field"
                     value={form.status}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, status: e.target.value }))

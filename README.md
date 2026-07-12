@@ -55,11 +55,11 @@ Password for all: `password123`
 
 | Email | Role |
 |-------|------|
-| admin@transitops.local | Admin (full access, users & settings) |
-| fleet@transitops.local | Fleet Manager |
-| dispatcher@transitops.local | Dispatcher |
-| safety@transitops.local | Safety Officer |
-| finance@transitops.local | Financial Analyst |
+| dvpatel6048@gmail.com | Admin (full access, users & settings) |
+| patelromil.surajnagar@gmail.com | Fleet Manager |
+| nazneenpatel189@gmail.com | Dispatcher |
+| nehapatel200512@gmail.com | Safety Officer |
+| echoflex2024@gmail.com | Financial Analyst |
 
 ## Demo Workflow
 
@@ -80,5 +80,6 @@ Password for all: `password123`
 - Maintenance open/close status sync
 - Fuel & expenses + operational cost
 - Dashboard KPIs + reports/CSV
+- **Bonus:** charts (Recharts), PDF export, license email reminders, vehicle documents, search/filter/sort, dark/light theme toggle
 
 

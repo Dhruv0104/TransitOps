@@ -17,13 +17,19 @@ export default function MaintenancePage() {
     cost: '',
   })
   const [saving, setSaving] = useState(false)
+  const [filters, setFilters] = useState({ vehicleId: '', active: 'all' })
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
+      const params = new URLSearchParams()
+      if (filters.vehicleId) params.set('vehicleId', filters.vehicleId)
+      if (filters.active === 'active') params.set('active', 'true')
+      if (filters.active === 'closed') params.set('active', 'false')
+      const qs = params.toString()
       const [logData, vehicleData] = await Promise.all([
-        apiRequest('/maintenance', { token }),
+        apiRequest(`/maintenance${qs ? `?${qs}` : ''}`, { token }),
         apiRequest('/vehicles', { token }),
       ])
       setLogs(logData.logs || [])
@@ -33,7 +39,7 @@ export default function MaintenancePage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, filters])
 
   useEffect(() => {
     load()
@@ -43,6 +49,18 @@ export default function MaintenancePage() {
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (!form.vehicleId) {
+      setError('Vehicle is required')
+      return
+    }
+    if (!form.description.trim()) {
+      setError('Description is required')
+      return
+    }
+    if (form.cost !== '' && (Number.isNaN(Number(form.cost)) || Number(form.cost) < 0)) {
+      setError('Cost cannot be negative')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -51,7 +69,7 @@ export default function MaintenancePage() {
         token,
         body: {
           vehicleId: form.vehicleId,
-          description: form.description,
+          description: form.description.trim(),
           cost: form.cost === '' ? 0 : Number(form.cost),
         },
       })
@@ -95,6 +113,34 @@ export default function MaintenancePage() {
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.vehicleId}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, vehicleId: e.target.value }))
+          }
+        >
+          <option value="">All vehicles</option>
+          {vehicles.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.registrationNo} — {v.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={filters.active}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, active: e.target.value }))
+          }
+        >
+          <option value="all">All logs</option>
+          <option value="active">Active only</option>
+          <option value="closed">Closed only</option>
+        </select>
+      </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-line bg-surface p-4">

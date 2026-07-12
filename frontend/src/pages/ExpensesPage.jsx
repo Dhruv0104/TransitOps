@@ -27,6 +27,7 @@ export default function ExpensesPage() {
     date: '',
   })
   const [saving, setSaving] = useState(false)
+  const [vehicleFilter, setVehicleFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -55,9 +56,30 @@ export default function ExpensesPage() {
 
   const totalFuelCost = fuelLogs.reduce((s, l) => s + l.cost, 0)
   const totalFuelLiters = fuelLogs.reduce((s, l) => s + l.liters, 0)
+  const filteredFuel = vehicleFilter
+    ? fuelLogs.filter((l) => l.vehicleId === vehicleFilter)
+    : fuelLogs
+  const filteredExpenses = vehicleFilter
+    ? expenses.filter((e) => e.vehicleId === vehicleFilter)
+    : expenses
+  const filteredCosts = vehicleFilter
+    ? costs.filter((c) => c.vehicleId === vehicleFilter)
+    : costs
 
   async function submitFuel(e) {
     e.preventDefault()
+    if (!fuelForm.vehicleId) {
+      setError('Vehicle is required')
+      return
+    }
+    if (!fuelForm.liters || Number(fuelForm.liters) <= 0) {
+      setError('Liters must be greater than 0')
+      return
+    }
+    if (fuelForm.cost === '' || Number.isNaN(Number(fuelForm.cost)) || Number(fuelForm.cost) < 0) {
+      setError('Fuel cost cannot be negative')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -82,6 +104,22 @@ export default function ExpensesPage() {
 
   async function submitExpense(e) {
     e.preventDefault()
+    if (!expenseForm.vehicleId) {
+      setError('Vehicle is required')
+      return
+    }
+    if (!expenseForm.type.trim()) {
+      setError('Expense type is required')
+      return
+    }
+    if (
+      expenseForm.amount === '' ||
+      Number.isNaN(Number(expenseForm.amount)) ||
+      Number(expenseForm.amount) <= 0
+    ) {
+      setError('Amount must be greater than 0')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -150,6 +188,22 @@ export default function ExpensesPage() {
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+
+      <div className="mt-4">
+        <select
+          className="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          value={vehicleFilter}
+          onChange={(e) => setVehicleFilter(e.target.value)}
+        >
+          <option value="">All vehicles</option>
+          {vehicles.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.registrationNo} — {v.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {loading ? <p className="mt-4 text-sm text-muted">Loading…</p> : null}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -165,7 +219,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {fuelLogs.map((log) => (
+              {filteredFuel.map((log) => (
                 <tr key={log.id} className="border-t border-line/70">
                   <td className="px-4 py-2">
                     {new Date(log.date).toLocaleDateString()}
@@ -193,7 +247,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((exp) => (
+              {filteredExpenses.map((exp) => (
                 <tr key={exp.id} className="border-t border-line/70">
                   <td className="px-4 py-2">
                     {new Date(exp.date).toLocaleDateString()}
@@ -223,7 +277,7 @@ export default function ExpensesPage() {
             </tr>
           </thead>
           <tbody>
-            {costs.map((c) => (
+            {filteredCosts.map((c) => (
               <tr key={c.vehicleId} className="border-t border-line/70">
                 <td className="px-4 py-2">
                   {c.registrationNo} — {c.name}

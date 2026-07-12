@@ -43,21 +43,21 @@ export default function ReportsPage() {
     load()
   }, [load])
 
-  async function downloadCsv() {
+  async function downloadExport(kind) {
     setError('')
     try {
-      const res = await fetch(`${API_BASE}/reports/export.csv`, {
+      const res = await fetch(`${API_BASE}/reports/export.${kind}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        throw new Error(json.message || 'CSV export failed')
+        throw new Error(json.message || `${kind.toUpperCase()} export failed`)
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'transitops-report.csv'
+      a.download = `transitops-report.${kind}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -89,13 +89,22 @@ export default function ReportsPage() {
             Fuel efficiency, utilization, operational cost, and vehicle ROI.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={downloadCsv}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500"
-        >
-          Export CSV
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => downloadExport('csv')}
+            className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-bold text-ink hover:border-accent/50"
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadExport('pdf')}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-500"
+          >
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
